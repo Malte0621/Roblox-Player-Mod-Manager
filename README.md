@@ -1,7 +1,7 @@
 <hr/>
 
 <p align="center">
-  <img width="256" height="256" src="https://raw.githubusercontent.com/Malte0621/Roblox-Player-Mod-Manager/master/ProjectSrc/Resources/Logo.png"><h1 align=center>Roblox Player Mod Manager<br/>(By: Malte0621)</h1>
+  <img width="256" height="256" src="https://raw.githubusercontent.com/Malte0621/Roblox-Player-Mod-Manager/main/ProjectSrc/Resources/Logo.png"><h1 align=center>Roblox Player Mod Manager<br/>(By: Malte0621)</h1>
   
 </p>
 
