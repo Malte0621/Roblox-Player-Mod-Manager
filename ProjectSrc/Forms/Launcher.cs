@@ -183,57 +183,6 @@ namespace RobloxPlayerModManager
             return warningForm;
         }
 
-        private async void editFVariables_Click(object sender, EventArgs e)
-        {
-            bool allow = true;
-
-            // Create a warning prompt if the user hasn't disabled this warning.
-            var warningDisabled = Program.GetBool("Disable Flag Warning");
-
-            if (!warningDisabled)
-            {
-                SystemSounds.Hand.Play();
-                allow = false;
-
-                using (Form warningPrompt = createFlagWarningPrompt())
-                {
-                    warningPrompt.ShowDialog();
-
-                    if (warningPrompt.DialogResult == DialogResult.Yes)
-                    {
-                        Program.SetValue("Disable Flag Warning", warningPrompt.Enabled);
-                        allow = true;
-                    }
-                }
-            }
-
-            if (allow)
-            {
-                string branch = getSelectedBranch();
-
-                Enabled = false;
-                UseWaitCursor = true;
-
-                var infoTask = PlayerBootstrapper.GetCurrentVersionInfo(branch);
-                var info = await infoTask.ConfigureAwait(true);
-
-                Hide();
-
-                var updateTask = BootstrapperForm.BringUpToDate(branch, info.VersionGuid, "Some newer flags might be missing.");
-                await updateTask.ConfigureAwait(true);
-
-                using (FlagEditor editor = new FlagEditor())
-                    editor.ShowDialog();
-
-                Show();
-                BringToFront();
-
-                Enabled = true;
-                UseWaitCursor = false;
-            }
-        }
-
-
         private async void launchPlayer_Click(object sender = null, EventArgs e = null)
         {
             string branch = getSelectedBranch();

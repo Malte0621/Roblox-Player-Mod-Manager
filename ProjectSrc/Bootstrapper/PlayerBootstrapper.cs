@@ -30,6 +30,11 @@ namespace RobloxPlayerModManager
             "   <ContentFolder>content</ContentFolder>\n" +
             "   <BaseUrl>http://www.roblox.com</BaseUrl>\n" +
             "</Settings>";
+        
+        private const string clientSettingsJson =
+            "{\n" +
+            "\n" +
+            "}";
 
         private const string UserAgent = "RobloxPlayerModManager";
         public const string StartEvent = "RobloxPlayerModManagerStart";
@@ -1014,6 +1019,17 @@ namespace RobloxPlayerModManager
                         string appSettings = Path.Combine(PlayerDir, "AppSettings.xml");
                         File.WriteAllText(appSettings, appSettingsXml);
 
+                        echo("Writing ClientSettings...");
+
+                        try
+                        {
+                            Directory.CreateDirectory(Path.Combine(PlayerDir, "ClientAppSettings"));
+                        }
+                        catch {}
+
+                        string clientSettings = Path.Combine(PlayerDir, "ClientAppSettings", "PlayerAppSettings.json");
+                        File.WriteAllText(clientSettings, clientSettingsJson);
+
                         setStatus("Deleting unused files...");
                         deleteUnusedFiles();
 
@@ -1076,8 +1092,8 @@ namespace RobloxPlayerModManager
 
             if (ApplyModManagerPatches && string.IsNullOrEmpty(OverridePlayerDirectory))
             {
-                echo("Applying flag configuration...");
-                FlagEditor.ApplyFlags();
+                // echo("Applying flag configuration...");
+                // FlagEditor.ApplyFlags();
 
                 // Secret feature only for me :(
                 // Feel free to patch in your own thing if you want.

@@ -33,7 +33,6 @@
             this.branchSelect = new System.Windows.Forms.ComboBox();
             this.branchLabel = new System.Windows.Forms.Label();
             this.forceRebuild = new System.Windows.Forms.CheckBox();
-            this.openFlagEditor = new System.Windows.Forms.Button();
             this.openPlayerDirectory = new System.Windows.Forms.CheckBox();
             this.targetVersionLabel = new System.Windows.Forms.Label();
             this.title = new System.Windows.Forms.Label();
@@ -123,20 +122,6 @@
             this.forceRebuild.TabIndex = 12;
             this.forceRebuild.Text = "Force Reinstallation";
             this.forceRebuild.UseVisualStyleBackColor = true;
-            // 
-            // openFlagEditor
-            // 
-            this.openFlagEditor.AccessibleName = "Open Flag Editor";
-            this.openFlagEditor.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.openFlagEditor.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.openFlagEditor.Location = new System.Drawing.Point(17, 257);
-            this.openFlagEditor.Margin = new System.Windows.Forms.Padding(8, 4, 4, 4);
-            this.openFlagEditor.Name = "openFlagEditor";
-            this.openFlagEditor.Size = new System.Drawing.Size(189, 28);
-            this.openFlagEditor.TabIndex = 15;
-            this.openFlagEditor.Text = "Edit Fast Flags";
-            this.openFlagEditor.UseVisualStyleBackColor = true;
-            this.openFlagEditor.Click += new System.EventHandler(this.editFVariables_Click);
             // 
             // openPlayerDirectory
             // 
@@ -241,7 +226,7 @@
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("Microsoft Sans Serif", 10.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label3.Location = new System.Drawing.Point(12, 286);
+            this.label3.Location = new System.Drawing.Point(12, 264);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(212, 20);
             this.label3.TabIndex = 27;
@@ -261,7 +246,6 @@
             this.Controls.Add(this.title);
             this.Controls.Add(this.targetVersion);
             this.Controls.Add(this.targetVersionLabel);
-            this.Controls.Add(this.openFlagEditor);
             this.Controls.Add(this.openPlayerDirectory);
             this.Controls.Add(this.forceRebuild);
             this.Controls.Add(this.branchLabel);
@@ -290,7 +274,6 @@
         private System.Windows.Forms.ComboBox branchSelect;
         private System.Windows.Forms.Label branchLabel;
         private System.Windows.Forms.CheckBox forceRebuild;
-        private System.Windows.Forms.Button openFlagEditor;
         private System.Windows.Forms.CheckBox openPlayerDirectory;
         private System.Windows.Forms.Label targetVersionLabel;
         private System.Windows.Forms.Label title;

@@ -9,7 +9,7 @@
 
 # What is this?
 
-The **Roblox Player Mod Manager** is an closed-source alternative bootstrapper for Roblox Player. It is intended for power users who want to make experimental changes/tweaks to Roblox Player without those changes being overwritten, and experiment with development builds/features of Roblox Player before the general public.
+The **Roblox Player Mod Manager** is an open-source alternative bootstrapper for Roblox Player. It is intended for power users who want to make experimental changes/tweaks to Roblox Player without those changes being overwritten, and experiment with development builds/features of Roblox Player before the general public.
 
 # Features
 * File overrides are sustained between updates.
@@ -36,5 +36,5 @@ The latest version can be found on the ***Releases*** page of this repository:<b
 https://github.com/Malte0621/Roblox-Player-Mod-Manager/releases
 
 You can also download the latest committed versions here:
-* <a href="https://github.com/Malte0621/Roblox-Player-Mod-Manager/raw/main/RobloxPlayerModManager.exe">Download (.exe)</a></h1>
-* <a href="https://github.com/Malte0621/Roblox-Player-Mod-Manager/archive/main.zip">Download (.zip)</a>
+* <a href="https://github.com/Malte0621/Roblox-Player-Mod-Manager/raw/master/RobloxPlayerModManager.exe">Download (.exe)</a></h1>
+* <a href="https://github.com/Malte0621/Roblox-Player-Mod-Manager/archive/master.zip">Download (.zip)</a>

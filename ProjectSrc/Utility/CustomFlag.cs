@@ -1,4 +1,4 @@
-﻿namespace RobloxPlayerModManager
+﻿namespace RobloxStudioModManager
 {
     public class CustomFlag
     {

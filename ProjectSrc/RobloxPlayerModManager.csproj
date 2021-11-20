@@ -114,26 +114,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Events\*.cs" />
-    <Compile Include="Forms\FlagCreator.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FlagCreator.Designer.cs">
-      <DependentUpon>FlagCreator.cs</DependentUpon>
-    </Compile>
     <Compile Include="History\*.cs" />
-    <Compile Include="Utility\*.cs" />
+    <Compile Include="Utility\CustomFlag.cs" />
+    <Compile Include="Utility\CustomFlag.cs" />
+    <Compile Include="Utility\FVariable.cs" />
+    <Compile Include="Utility\Package.cs" />
+    <Compile Include="Utility\SystemEvent.cs" />
     <Compile Include="Bootstrapper\*.cs" />
     <Compile Include="Forms\BootstrapperForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\BootstrapperForm.Designer.cs">
       <DependentUpon>BootstrapperForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FlagEditor.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FlagEditor.Designer.cs">
-      <DependentUpon>FlagEditor.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
