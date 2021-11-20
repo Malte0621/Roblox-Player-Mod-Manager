@@ -36,5 +36,5 @@ The latest version can be found on the ***Releases*** page of this repository:<b
 https://github.com/Malte0621/Roblox-Player-Mod-Manager/releases
 
 You can also download the latest committed versions here:
-* <a href="https://github.com/Malte0621/Roblox-Player-Mod-Manager/raw/master/RobloxPlayerModManager.exe">Download (.exe)</a></h1>
-* <a href="https://github.com/Malte0621/Roblox-Player-Mod-Manager/archive/master.zip">Download (.zip)</a>
+* <a href="https://github.com/Malte0621/Roblox-Player-Mod-Manager/raw/main/RobloxPlayerModManager.exe">Download (.exe)</a></h1>
+* <a href="https://github.com/Malte0621/Roblox-Player-Mod-Manager/archive/main.zip">Download (.zip)</a>
