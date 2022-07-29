@@ -5,6 +5,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Media;
+using System.Net;
 using System.Windows.Forms;
 
 using Microsoft.Win32;
@@ -392,6 +393,42 @@ namespace RobloxPlayerModManager
 
             var target = targetVersion.SelectedItem as DeployLog;
             Program.SetValue("TargetVersion", target.VersionId);
+        }
+
+        private bool reverting = false;
+
+        private void revertButton_Click(object sender, EventArgs e)
+        {
+            if (reverting)
+                return;
+            reverting = true;
+            var request = WebRequest.Create("http://setup.roblox.com/version");
+            request.Method = "GET";
+
+            var webResponse = request.GetResponse();
+            var webStream = webResponse.GetResponseStream();
+
+            var reader = new StreamReader(webStream);
+            var data = reader.ReadToEnd();
+            reader.Dispose();
+            webStream.Close();
+
+
+            using (var client = new WebClient())
+            {
+                string fp = Path.Combine(Environment.GetEnvironmentVariable("temp"), "RobloxPlayerLauncher.exe");
+                File.Delete(fp);
+                client.DownloadFile("https://setup.rbxcdn.com/" + data + "-Roblox.exe", fp);
+                var open = new ProcessStartInfo()
+                {
+                    FileName = fp,
+                    UseShellExecute = true,
+                    Verb = "open"
+                };
+
+                Process.Start(open);
+                Application.Exit();
+            }
         }
     }
 }

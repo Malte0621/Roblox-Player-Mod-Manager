@@ -42,6 +42,7 @@
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
+            this.revertButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.logo)).BeginInit();
             this.SuspendLayout();
             // 
@@ -128,7 +129,7 @@
             this.openPlayerDirectory.AccessibleName = "Just Open Player Path";
             this.openPlayerDirectory.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.openPlayerDirectory.AutoSize = true;
-            this.openPlayerDirectory.Location = new System.Drawing.Point(266, 362);
+            this.openPlayerDirectory.Location = new System.Drawing.Point(261, 359);
             this.openPlayerDirectory.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.openPlayerDirectory.Name = "openPlayerDirectory";
             this.openPlayerDirectory.Size = new System.Drawing.Size(222, 24);
@@ -226,11 +227,26 @@
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label3.Location = new System.Drawing.Point(12, 330);
+            this.label3.Location = new System.Drawing.Point(12, 353);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(227, 22);
             this.label3.TabIndex = 27;
             this.label3.Text = "[For testing purposes only.]";
+            // 
+            // revertButton
+            // 
+            this.revertButton.AccessibleName = "Open Mod Folder";
+            this.revertButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.revertButton.Cursor = System.Windows.Forms.Cursors.Default;
+            this.revertButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.revertButton.Location = new System.Drawing.Point(16, 321);
+            this.revertButton.Margin = new System.Windows.Forms.Padding(9, 5, 4, 5);
+            this.revertButton.Name = "revertButton";
+            this.revertButton.Size = new System.Drawing.Size(216, 35);
+            this.revertButton.TabIndex = 28;
+            this.revertButton.Text = "Revert To Normal Roblox";
+            this.revertButton.UseVisualStyleBackColor = true;
+            this.revertButton.Click += new System.EventHandler(this.revertButton_Click);
             // 
             // Launcher
             // 
@@ -238,6 +254,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Control;
             this.ClientSize = new System.Drawing.Size(502, 384);
+            this.Controls.Add(this.revertButton);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
@@ -283,6 +300,7 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.Button revertButton;
     }
 }
 
