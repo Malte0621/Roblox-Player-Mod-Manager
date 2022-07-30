@@ -8,6 +8,9 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 using Microsoft.Win32;
 
 namespace RobloxPlayerModManager
@@ -23,6 +26,9 @@ namespace RobloxPlayerModManager
         public static readonly CultureInfo Format = CultureInfo.InvariantCulture;
         public const StringComparison StringFormat = StringComparison.InvariantCulture;
         public static readonly NumberFormatInfo NumberFormat = NumberFormatInfo.InvariantInfo;
+
+        public static string RootDir { get; private set; }
+        public static ModManagerState State { get; private set; }
 
         private static readonly Regex jsonPattern = new Regex("\"([^\"]*)\":\"?([^\"]*)\"?[,|}]");
 
@@ -143,15 +149,79 @@ namespace RobloxPlayerModManager
             }
         }
 
+        static void ConvertLegacy(RegistryKey regKey, JObject node)
+        {
+            foreach (var name in regKey.GetValueNames())
+            {
+                string key = name.Replace(" ", "");
+                object value = regKey.GetValue(name);
+
+                var token = JToken.FromObject(value);
+                node.Add(key, token);
+            }
+
+            foreach (var subKeyName in regKey.GetSubKeyNames())
+            {
+                var subKey = regKey.OpenSubKey(subKeyName);
+                var child = new JObject();
+
+                ConvertLegacy(subKey, child);
+                node.Add(subKeyName, child);
+            }
+        }
+
         static Program()
         {
             const int SYSTEM_AWARE = 1;
             _ = SetProcessDpiAwareness(SYSTEM_AWARE);
         }
 
+        public static void SaveState()
+        {
+            var stateFile = Path.Combine(RootDir, "state.json");
+            string json = JsonConvert.SerializeObject(State, Formatting.Indented);
+            File.WriteAllText(stateFile, json);
+        }
+
+        static void OnExiting(object sender, EventArgs e)
+        {
+            SaveState();
+        }
+
         [STAThread]
         static void Main(string[] args)
         {
+            // Initialize application state.
+            var localAppData = Environment.GetEnvironmentVariable("localappdata");
+            RootDir = Path.Combine(localAppData, "Roblox Studio Mod Manager");
+
+            if (!Directory.Exists(RootDir))
+                Directory.CreateDirectory(RootDir);
+
+            var stateFile = Path.Combine(RootDir, "state.json");
+            string json = "";
+
+            if (File.Exists(stateFile))
+                json = File.ReadAllText(stateFile);
+
+            if (string.IsNullOrEmpty(json))
+            {
+                var root = new JObject();
+                ConvertLegacy(MainRegistry, root);
+
+                json = root.ToString();
+                File.WriteAllText(stateFile, json);
+            }
+
+            try
+            {
+                State = JsonConvert.DeserializeObject<ModManagerState>(json);
+            }
+            catch
+            {
+                State = new ModManagerState();
+            }
+
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             
             Application.EnableVisualStyles();

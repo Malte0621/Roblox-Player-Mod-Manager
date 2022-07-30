@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Media;
 using System.Net;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 using Microsoft.Win32;
@@ -428,6 +429,62 @@ namespace RobloxPlayerModManager
 
                 Process.Start(open);
                 Application.Exit();
+            }
+        }
+
+        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            this.linkLabel1.LinkVisited = true;
+            Process.Start("https://github.com/Malte0621/Roblox-Player-Mod-Manager");
+        }
+
+        private async void openFlagEditor_ClickAsync(object sender, EventArgs e)
+        {
+            bool allow = true;
+
+            // Create a warning prompt if the user hasn't disabled this warning.
+            var warningDisabled = Program.State.DisableFlagWarning;
+
+            if (!warningDisabled)
+            {
+                SystemSounds.Hand.Play();
+                allow = false;
+
+                using (Form warningPrompt = createFlagWarningPrompt())
+                {
+                    warningPrompt.ShowDialog();
+
+                    if (warningPrompt.DialogResult == DialogResult.Yes)
+                    {
+                        Program.State.DisableFlagWarning = warningPrompt.Enabled;
+                        allow = true;
+                    }
+                }
+            }
+
+            if (allow)
+            {
+                string branch = getSelectedBranch();
+
+                Enabled = false;
+                UseWaitCursor = true;
+
+                var infoTask = PlayerBootstrapper.GetCurrentVersionInfo(branch);
+                var info = await infoTask.ConfigureAwait(true);
+
+                Hide();
+
+                var updateTask = BootstrapperForm.BringUpToDate(branch, info.VersionGuid, "Some newer flags might be missing.");
+                await updateTask.ConfigureAwait(true);
+
+                using (FlagEditor editor = new FlagEditor())
+                    editor.ShowDialog();
+
+                Show();
+                BringToFront();
+
+                Enabled = true;
+                UseWaitCursor = false;
             }
         }
     }
