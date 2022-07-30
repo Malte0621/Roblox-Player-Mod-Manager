@@ -461,7 +461,7 @@ namespace RobloxPlayerModManager
             string oldSig = pkgInfo.GetString("Signature");
             string newSig = package.Signature;
 
-            if (oldSig == newSig && !ForceInstall)
+            if (oldSig == newSig && !ForceInstall && File.Exists(GetPlayerPath()))
             {
                 int fileCount = pkgInfo.GetInt("NumFiles");
                 echo($"Package '{pkgName}' hasn't changed between builds, skipping.");
@@ -870,15 +870,14 @@ namespace RobloxPlayerModManager
             
             buildVersion = versionInfo.VersionGuid;
 
-            if (currentVersion != buildVersion || ForceInstall)
+            if (currentVersion != buildVersion || ForceInstall || !File.Exists(GetPlayerPath()))
             {
-                if (dontUpdate)
+                if (dontUpdate && File.Exists(GetPlayerPath()))
                 {
                     echo("dontUpdate: true, ignoring update.");
                 }
                 else
                 {
-
                     echo("This build needs to be installed!");
                     bool PlayerClosed = true;
 

@@ -474,7 +474,7 @@ namespace RobloxPlayerModManager
                 {
                     try
                     {
-                        Registry.CurrentUser.GetSubKey("SOFTWARE").DeleteSubKey("Roblox Player Mod Manager");
+                        Registry.CurrentUser.GetSubKey("SOFTWARE").DeleteSubKeyTree("Roblox Player Mod Manager");
                     }
                     catch { }
 
