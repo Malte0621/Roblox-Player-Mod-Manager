@@ -418,7 +418,10 @@ namespace RobloxPlayerModManager
             using (var client = new WebClient())
             {
                 string fp = Path.Combine(Environment.GetEnvironmentVariable("temp"), "RobloxPlayerLauncher.exe");
-                File.Delete(fp);
+                if (File.Exists(fp))
+                {
+                    File.Delete(fp);
+                }
                 client.DownloadFile("https://setup.rbxcdn.com/" + data + "-Roblox.exe", fp);
                 var open = new ProcessStartInfo()
                 {
@@ -426,6 +429,62 @@ namespace RobloxPlayerModManager
                     UseShellExecute = true,
                     Verb = "open"
                 };
+
+                try
+                {
+                    Directory.Delete(PlayerBootstrapper.GetPlayerDirectory(), true);
+                }
+                catch { }
+                try
+                {
+                    string localAppData = Environment.GetEnvironmentVariable("LocalAppData");
+
+                    string settingsDir = Path.Combine(localAppData, "Roblox", "ClientSettings");
+                    string settingsPath = Path.Combine(settingsDir, "ClientAppSettings.json");
+                    if (File.Exists(settingsPath))
+                    {
+                        File.Delete(settingsPath);
+                    }
+                    else
+                    {
+                        localAppData = Environment.GetEnvironmentVariable("programfiles");
+
+                        settingsDir = Path.Combine(localAppData, "Roblox", "ClientSettings");
+                        settingsPath = Path.Combine(settingsDir, "ClientAppSettings.json");
+                        if (File.Exists(settingsPath))
+                        {
+                            File.Delete(settingsPath);
+                        }
+                        else
+                        {
+                            localAppData = Environment.GetEnvironmentVariable("programfiles(x86)");
+
+                            settingsDir = Path.Combine(localAppData, "Roblox", "ClientSettings");
+                            settingsPath = Path.Combine(settingsDir, "ClientAppSettings.json");
+                            if (File.Exists(settingsPath))
+                            {
+                                File.Delete(settingsPath);
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    try
+                    {
+                        Registry.CurrentUser.GetSubKey("SOFTWARE").DeleteSubKey("Roblox Player Mod Manager");
+                    }
+                    catch { }
+
+                    var stateFile = Path.Combine(Program.RootDir, "state.json");
+                    if (File.Exists(stateFile))
+                    {
+                        File.Delete(stateFile);
+                    }
+                }
+                catch { }
 
                 Process.Start(open);
                 Application.Exit();

@@ -184,6 +184,21 @@ namespace RobloxPlayerModManager
             string localAppData = Environment.GetEnvironmentVariable("LocalAppData");
 
             string settingsDir = Path.Combine(localAppData, "Roblox", "ClientSettings");
+            if (!Directory.Exists(settingsDir))
+            {
+                localAppData = Environment.GetEnvironmentVariable("programfiles");
+                settingsDir = Path.Combine(localAppData, "Roblox", "ClientSettings");
+                if (!Directory.Exists(settingsDir))
+                {
+                    localAppData = Environment.GetEnvironmentVariable("programfiles(x86)");
+                    settingsDir = Path.Combine(localAppData, "Roblox", "ClientSettings");
+                    if (!Directory.Exists(settingsDir))
+                    {
+                        MessageBox.Show("Roblox installation was not found, therefor this feature is inaccessible. Please install roblox and try again.", "Roblox Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        this.Close();
+                    }
+                }
+            }
             string settingsPath = Path.Combine(settingsDir, "ClientAppSettings.json");
 
             string lastExecVersion = versionRegistry.LastExecutedVersion;
