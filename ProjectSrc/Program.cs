@@ -193,7 +193,7 @@ namespace RobloxPlayerModManager
         {
             // Initialize application state.
             var localAppData = Environment.GetEnvironmentVariable("localappdata");
-            RootDir = Path.Combine(localAppData, "Roblox Studio Mod Manager");
+            RootDir = Path.Combine(localAppData, "Roblox Player Mod Manager");
 
             if (!Directory.Exists(RootDir))
                 Directory.CreateDirectory(RootDir);

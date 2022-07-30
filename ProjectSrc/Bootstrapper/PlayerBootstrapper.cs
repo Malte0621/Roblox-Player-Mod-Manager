@@ -1022,11 +1022,11 @@ namespace RobloxPlayerModManager
 
                         try
                         {
-                            Directory.CreateDirectory(Path.Combine(PlayerDir, "ClientAppSettings"));
+                            Directory.CreateDirectory(Path.Combine(PlayerDir, "ClientSettings"));
                         }
                         catch {}
 
-                        string clientSettings = Path.Combine(PlayerDir, "ClientAppSettings", "PlayerAppSettings.json");
+                        string clientSettings = Path.Combine(PlayerDir, "ClientAppSettings", "ClientAppSettings.json");
                         File.WriteAllText(clientSettings, clientSettingsJson);
 
                         setStatus("Deleting unused files...");

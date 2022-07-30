@@ -60,7 +60,9 @@ namespace RobloxPlayerModManager
                 overrideTable?.Dispose();
                 Program.SaveState();
             }
-            
+
+            ApplyFlags();
+
             base.Dispose(disposing);
         }
 
