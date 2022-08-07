@@ -1,3 +1,3 @@
 # Sample Mods
 
-Mods not implemented.
+Extract the ModFiles.zip into the mod folder to use the content. (In this case it restores the old death sound.)
