@@ -1026,7 +1026,7 @@ namespace RobloxPlayerModManager
                         }
                         catch {}
 
-                        string clientSettings = Path.Combine(PlayerDir, "ClientAppSettings", "ClientAppSettings.json");
+                        string clientSettings = Path.Combine(PlayerDir, "ClientSettings", "ClientAppSettings.json");
                         File.WriteAllText(clientSettings, clientSettingsJson);
 
                         setStatus("Deleting unused files...");
