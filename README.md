@@ -15,6 +15,7 @@ The **Roblox Player Mod Manager** is an open-source alternative bootstrapper for
 * File overrides are sustained between updates.
 * Updates are applied incrementally to a single directory.
 * Smooth transitions between development builds of Roblox Player.
+* A fast flag editor, allowing you to toggle new unstable features.
 * File updates from Roblox's deployment servers are only applied where needed.
 * Runs and installs in a separate directory, 100% independent of Roblox Player's bootstrapper.
 
