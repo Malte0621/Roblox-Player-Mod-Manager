@@ -5,18 +5,15 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Media;
-using System.Net;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
-using Microsoft.Win32;
 using RobloxDeployHistory;
 
 namespace RobloxPlayerModManager
 {
     public partial class Launcher : Form
     {
-        private static RegistryKey versionRegistry => Program.GetSubKey("VersionData");
+        private static VersionManifest versionRegistry => Program.State.VersionData;
         private readonly string[] args = null;
 
         public Launcher(params string[] mainArgs)
@@ -27,30 +24,43 @@ namespace RobloxPlayerModManager
             InitializeComponent();
         }
 
-        private string getSelectedBranch()
+        private Channel getSelectedChannel()
         {
-            var result = branchSelect.SelectedItem;
+            var result = channelSelect.SelectedItem;
             return result.ToString();
         }
 
-        private void Launcher_Load(object sender, EventArgs e)
+        private async void Launcher_Load(object sender, EventArgs e)
         {
+            Enabled = false;
+            UseWaitCursor = true;
+
             if (args != null)
                 openPlayerDirectory.Enabled = false;
 
-            string build = Program.GetString("BuildBranch");
-            int buildIndex = branchSelect.Items.IndexOf(build);
-            branchSelect.SelectedIndex = Math.Max(buildIndex, 0);
+            var channels = await PlayerBootstrapper.FetchKnownChannels();
+
+            var setChannels = new Action(() =>
+            {
+                var items = channelSelect.Items;
+                var channel = Program.State.Channel;
+
+                items.Clear();
+                items.AddRange(channels);
+
+                selectChannel(channel);
+            });
+
+            Invoke(setChannels);
         }
 
         public static string getModPath()
         {
-            string appData = Environment.GetEnvironmentVariable("AppData");
-            string root = Path.Combine(appData, "RbxModManager", "ModFiles");
+            string root = Path.Combine(Program.RootDir, "ModFiles");
 
             if (!Directory.Exists(root))
             {
-                // Build a folder structure so the usage of my mod manager is more clear.
+                // Build a folder structure so the usage is more clear.
                 Directory.CreateDirectory(root);
 
                 string[] folderPaths = new string[]
@@ -70,7 +80,7 @@ namespace RobloxPlayerModManager
 
                 foreach (string f in folderPaths)
                 {
-                    string path = Path.Combine(root, f.Replace("/", "\\"));
+                    string path = Path.Combine(root, f);
                     Directory.CreateDirectory(path);
                 }
             }
@@ -98,8 +108,8 @@ namespace RobloxPlayerModManager
             {
                 Text = "WARNING: HERE BE DRAGONS",
 
-                Width = 700,
-                Height = 400,
+                Width = 425,
+                Height = 250,
                 MaximizeBox = false,
                 MinimizeBox = false,
 
@@ -111,18 +121,17 @@ namespace RobloxPlayerModManager
 
             var errorIcon = new PictureBox()
             {
-                BackgroundImage = SystemIcons.Error.ToBitmap(),
-                BackgroundImageLayout = ImageLayout.Zoom,
+                Image = SystemIcons.Error.ToBitmap(),
                 Location = new Point(12, 12),
-                Size = new Size(48, 48),
+                Size = new Size(32, 32),
             };
 
             var dontShowAgain = new CheckBox()
             {
                 AutoSize = true,
-                Location = new Point(85, 235),
+                Location = new Point(54, 145),
                 Text = "Do not show this warning again.",
-                Font = new Font("Segoe UI", 11f),
+                Font = new Font("Microsoft Sans Serif", 9.75f),
             };
 
             var buttonPanel = new FlowLayoutPanel()
@@ -131,32 +140,31 @@ namespace RobloxPlayerModManager
                 BackColor = SystemColors.ControlLight,
                 Padding = new Padding(4),
                 Dock = DockStyle.Bottom,
-                Size = new Size(0, 60)
+                Size = new Size(0, 40)
             };
 
             var infoLabel = new Label()
             {
                 AutoSize = true,
 
-                Font = new Font("Segoe UI", 11f),
-
+                Font = new Font("Microsoft Sans Serif", 9.75f),
                 Text = "Editing flags can make Roblox Player unstable, and could potentially corrupt your places and game data.\n\n" +
                        "You should not edit them unless you are just experimenting with new features locally, and you know what you're doing.\n\n" +
                        "Are you sure you would like to continue?",
 
-                Location = new Point(80, 14),
-                MaximumSize = new Size(600, 0),
+                Location = new Point(50, 14),
+                MaximumSize = new Size(350, 0),
             };
 
             var yes = new Button()
             {
-                Size = new Size(150, 40),
+                Size = new Size(100, 23),
                 Text = "Yes",
             };
 
             var no = new Button()
             {
-                Size = new Size(150, 40),
+                Size = new Size(100, 23),
                 Text = "No",
             };
 
@@ -185,18 +193,67 @@ namespace RobloxPlayerModManager
             return warningForm;
         }
 
+        private async void editFVariables_Click(object sender, EventArgs e)
+        {
+            bool allow = true;
+
+            // Create a warning prompt if the user hasn't disabled this warning.
+            var warningDisabled = Program.State.DisableFlagWarning;
+
+            if (!warningDisabled)
+            {
+                SystemSounds.Hand.Play();
+                allow = false;
+
+                using (Form warningPrompt = createFlagWarningPrompt())
+                {
+                    warningPrompt.ShowDialog();
+
+                    if (warningPrompt.DialogResult == DialogResult.Yes)
+                    {
+                        Program.State.DisableFlagWarning = warningPrompt.Enabled;
+                        allow = true;
+                    }
+                }
+            }
+
+            if (allow)
+            {
+                var channel = getSelectedChannel();
+
+                Enabled = false;
+                UseWaitCursor = true;
+
+                var infoTask = PlayerBootstrapper.GetCurrentVersionInfo(channel);
+                var info = await infoTask.ConfigureAwait(true);
+
+                Hide();
+
+                var updateTask = BootstrapperForm.BringUpToDate(channel, info.VersionGuid, "Some newer flags might be missing.");
+                await updateTask.ConfigureAwait(true);
+
+                using (FlagEditor editor = new FlagEditor())
+                    editor.ShowDialog();
+
+                Show();
+                BringToFront();
+
+                Enabled = true;
+                UseWaitCursor = false;
+            }
+        }
+
         private async void launchPlayer_Click(object sender = null, EventArgs e = null)
         {
-            string branch = getSelectedBranch();
+            var channel = getSelectedChannel();
 
             var bootstrapper = new PlayerBootstrapper
             {
                 ForceInstall = forceRebuild.Checked,
-                dontUpdate = dontUpdate1.Checked,
                 ApplyModManagerPatches = true,
 
                 SetStartEvent = true,
-                Branch = branch
+                Channel = channel
             };
 
             Hide();
@@ -206,20 +263,33 @@ namespace RobloxPlayerModManager
                 var install = installer.Bootstrap();
                 await install.ConfigureAwait(true);
             }
-            
+
             string PlayerRoot = PlayerBootstrapper.GetPlayerDirectory();
             string modPath = getModPath();
 
-            string[] modFiles = Directory.GetFiles(modPath, "*.*", SearchOption.AllDirectories);
+            var modFiles = Directory.GetFiles(modPath, "*.*", SearchOption.AllDirectories);
 
-            foreach (string modFile in modFiles)
+            foreach (string file in modFiles)
             {
                 try
                 {
-                    byte[] fileContents = File.ReadAllBytes(modFile);
-                    FileInfo modFileControl = new FileInfo(modFile);
+                    var info = new FileInfo(file);
+                    var filePath = file;
+                    var delete = false;
 
-                    string relativeFile = modFile.Replace(modPath, PlayerRoot);
+                    if (info.Length == 0 && info.Name.StartsWith("DELETE"))
+                    {
+                        var dir = info.DirectoryName;
+
+                        var realName = info.Name
+                            .Substring(6)
+                            .TrimStart();
+
+                        filePath = Path.Combine(dir, realName);
+                        delete = true;
+                    }
+
+                    string relativeFile = filePath.Replace(modPath, PlayerRoot);
 
                     string relativeDir = Directory
                         .GetParent(relativeFile)
@@ -228,22 +298,37 @@ namespace RobloxPlayerModManager
                     if (!Directory.Exists(relativeDir))
                         Directory.CreateDirectory(relativeDir);
 
+                    byte[] contents = info.Length > 0
+                        ? File.ReadAllBytes(file)
+                        : Array.Empty<byte>();
+
                     if (File.Exists(relativeFile))
                     {
-                        byte[] relativeContents = File.ReadAllBytes(relativeFile);
+                        byte[] relative = File.ReadAllBytes(relativeFile);
 
-                        if (fileContents.SequenceEqual(relativeContents))
+                        if (relative.Length == contents.Length)
+                            if (relative.SequenceEqual(contents))
+                                continue;
+
+                        if (delete)
+                        {
+                            File.Delete(relativeFile);
+                            continue;
+                        }
+
+                        info.CopyTo(relativeFile, true);
+                    }
+                    else
+                    {
+                        if (delete)
                             continue;
 
-                        modFileControl.CopyTo(relativeFile, true);
-                        continue;
+                        File.WriteAllBytes(relativeFile, contents);
                     }
-
-                    File.WriteAllBytes(relativeFile, fileContents);
                 }
-                catch (IOException)
+                catch
                 {
-                    Console.WriteLine("Failed to overwrite {0}!", modFile);
+                    Console.WriteLine("Failed to overwrite {0}!", file);
                 }
             }
 
@@ -279,8 +364,8 @@ namespace RobloxPlayerModManager
                             //else
                             //{
                             argMap.Add(key, val);
-                            // robloxPlayerInfo.Arguments += " -" + key + ' ' + val;
-                            // }
+                            //    robloxPlayerInfo.Arguments += " -" + key + ' ' + val;
+                            //}
                         }
                     }
 
@@ -292,7 +377,7 @@ namespace RobloxPlayerModManager
                         {
                             string gameinfo = argMap["gameinfo"];
                             string launchtime = argMap["launchtime"];
-                            string placelauncherurl = argMap["placelauncherurl"].Replace("%3A",":").Replace("%2F","/").Replace("%3F","?").Replace("%3D","=").Replace("%26","&");
+                            string placelauncherurl = argMap["placelauncherurl"].Replace("%3A", ":").Replace("%2F", "/").Replace("%3F", "?").Replace("%3D", "=").Replace("%26", "&");
                             string browsertrackerid = argMap["browsertrackerid"];
                             string robloxLocale = argMap["robloxLocale"];
                             string gameLocale = argMap["gameLocale"];
@@ -322,31 +407,33 @@ namespace RobloxPlayerModManager
             }
             else
             {
-                string currentVersion = versionRegistry.GetString("VersionGuid");
-                versionRegistry.SetValue("LastExecutedVersion", currentVersion);
+                string currentVersion = versionRegistry.VersionGuid;
+                versionRegistry.LastExecutedVersion = currentVersion;
 
                 Process.Start(robloxPlayerInfo);
             }
         }
 
-        private async void branchSelect_SelectedIndexChanged(object sender, EventArgs e)
+        private async void channelSelect_SelectedIndexChanged(object sender, EventArgs e)
         {
             // Save the user's branch preference.
-            string branch = getSelectedBranch();
-            Program.SetValue("BuildBranch", branch);
+            var channel = getSelectedChannel();
+            Program.State.Channel = channel;
+            Program.SaveState();
 
             // Grab the version currently being targetted.
-            string targetId = Program.GetString("TargetVersion");
+            string targetId = Program.State.TargetVersion;
+            const string latest = "(Use Latest)";
 
             // Clear the current list of target items.
             targetVersion.Items.Clear();
-            targetVersion.Items.Add("(Use Latest)");
+            targetVersion.Items.Add(latest);
 
             // Populate the items list using the deploy history.
             Enabled = false;
             UseWaitCursor = true;
 
-            var getDeployLogs = PlayerDeployLogs.Get(branch);
+            var getDeployLogs = PlayerDeployLogs.Get(channel);
             var deployLogs = await getDeployLogs.ConfigureAwait(true);
 
             Enabled = true;
@@ -354,20 +441,24 @@ namespace RobloxPlayerModManager
 
             HashSet<DeployLog> targets;
 
-            //if (Environment.Is64BitOperatingSystem)
-            //    targets = deployLogs.CurrentLogs_x64;
-            //else
-            //    targets = deployLogs.CurrentLogs_x86;
+            if (Environment.Is64BitOperatingSystem)
+                targets = deployLogs.CurrentLogs_x64;
+            else
+                targets = deployLogs.CurrentLogs_x86;
 
-            targets = deployLogs.CurrentLogs_x86; // No 64-bit player yet.
 
-            var items = targets
-                .OrderByDescending(log => log.Changelist)
-                .Cast<object>()
-                .Skip(1)
-                .ToArray();
+            targetVersion.Enabled = deployLogs.HasHistory;
+            targetVersionLabel.Enabled = deployLogs.HasHistory;
 
-            targetVersion.Items.AddRange(items);
+            if (deployLogs.HasHistory)
+            {
+                var items = targets
+                    .OrderByDescending(log => log.TimeStamp)
+                    .Cast<object>()
+                    .ToArray();
+
+                targetVersion.Items.AddRange(items);
+            }
 
             // Select the deploy log being targetted.
             DeployLog target = targets
@@ -380,171 +471,96 @@ namespace RobloxPlayerModManager
                 return;
             }
 
-            // If the target isn't valid, fallback to the latest version.
-            targetVersion.SelectedIndex = 0;
+            // If the target isn't valid, fallback to live.
+            targetVersion.SelectedItem = latest;
         }
 
         private void targetVersion_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (targetVersion.SelectedIndex == 0)
             {
-                Program.SetValue("TargetVersion", "");
+                Program.State.TargetVersion = "";
                 return;
             }
 
             var target = targetVersion.SelectedItem as DeployLog;
-            Program.SetValue("TargetVersion", target.VersionId);
+            Program.State.TargetVersion = target.VersionId;
         }
 
-        private bool reverting = false;
-
-        private void revertButton_Click(object sender, EventArgs e)
+        private async void selectChannel(string text)
         {
-            if (reverting)
+            object existing = null;
+
+            foreach (var item in channelSelect.Items)
+            {
+                string name = item.ToString();
+
+                if (name.ToLowerInvariant() == text.ToLowerInvariant())
+                {
+                    existing = item;
+                    break;
+                }
+            }
+
+            if (existing != null)
+            {
+                var index = channelSelect.Items.IndexOf(existing);
+                channelSelect.SelectedIndex = index;
                 return;
-            reverting = true;
-            var request = WebRequest.Create("http://setup.roblox.com/version");
-            request.Method = "GET";
+            }
 
-            var webResponse = request.GetResponse();
-            var webStream = webResponse.GetResponseStream();
+            var channel = new Channel(text);
 
-            var reader = new StreamReader(webStream);
-            var data = reader.ReadToEnd();
-            reader.Dispose();
-            webStream.Close();
-
-
-            using (var client = new WebClient())
+            try
             {
-                string fp = Path.Combine(Environment.GetEnvironmentVariable("temp"), "RobloxPlayerLauncher.exe");
-                if (File.Exists(fp))
-                {
-                    File.Delete(fp);
-                }
-                client.DownloadFile("https://setup.rbxcdn.com/" + data + "-Roblox.exe", fp);
-                var open = new ProcessStartInfo()
-                {
-                    FileName = fp,
-                    UseShellExecute = true,
-                    Verb = "open"
-                };
+                var logs = await PlayerDeployLogs
+                    .Get(channel)
+                    .ConfigureAwait(true);
 
-                try
-                {
-                    Directory.Delete(PlayerBootstrapper.GetPlayerDirectory(), true);
-                }
-                catch { }
-                try
-                {
-                    string localAppData = Environment.GetEnvironmentVariable("LocalAppData");
+                bool valid = Environment.Is64BitOperatingSystem
+                    ? logs.CurrentLogs_x64.Any()
+                    : logs.CurrentLogs_x86.Any();
 
-                    string settingsDir = Path.Combine(localAppData, "Roblox", "ClientSettings");
-                    string settingsPath = Path.Combine(settingsDir, "ClientAppSettings.json");
-                    if (File.Exists(settingsPath))
+                if (valid)
+                {
+                    var setItem = new Action(() =>
                     {
-                        File.Delete(settingsPath);
-                    }
-                    else
-                    {
-                        localAppData = Environment.GetEnvironmentVariable("programfiles");
+                        int index = channelSelect.Items.Add(text);
+                        channelSelect.SelectedIndex = index;
+                    });
 
-                        settingsDir = Path.Combine(localAppData, "Roblox", "ClientSettings");
-                        settingsPath = Path.Combine(settingsDir, "ClientAppSettings.json");
-                        if (File.Exists(settingsPath))
-                        {
-                            File.Delete(settingsPath);
-                        }
-                        else
-                        {
-                            localAppData = Environment.GetEnvironmentVariable("programfiles(x86)");
+                    Program.State.Channel = channel;
+                    Program.SaveState();
 
-                            settingsDir = Path.Combine(localAppData, "Roblox", "ClientSettings");
-                            settingsPath = Path.Combine(settingsDir, "ClientAppSettings.json");
-                            if (File.Exists(settingsPath))
-                            {
-                                File.Delete(settingsPath);
-                            }
-                        }
-                    }
+                    Invoke(setItem);
+                    return;
                 }
-                catch { }
+                throw new Exception("No channels to work with!");
+            }
+            catch
+            {
+                var reset = new Action(() => channelSelect.SelectedIndex = 0);
 
-                try
-                {
-                    try
-                    {
-                        Registry.CurrentUser.GetSubKey("SOFTWARE").DeleteSubKeyTree("Roblox Player Mod Manager");
-                    }
-                    catch { }
+                MessageBox.Show
+                (
+                    $"Channel '{channel}' had no valid data on Roblox's CDN!",
+                    "Invalid channel!",
 
-                    var stateFile = Path.Combine(Program.RootDir, "state.json");
-                    if (File.Exists(stateFile))
-                    {
-                        File.Delete(stateFile);
-                    }
-                }
-                catch { }
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
 
-                Process.Start(open);
-                Application.Exit();
+                Invoke(reset);
             }
         }
 
-        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private void channelSelect_KeyDown(object sender, KeyEventArgs e)
         {
-            this.linkLabel1.LinkVisited = true;
-            Process.Start("https://github.com/Malte0621/Roblox-Player-Mod-Manager");
-        }
+            if (e.KeyCode != Keys.Enter)
+                return;
 
-        private async void openFlagEditor_ClickAsync(object sender, EventArgs e)
-        {
-            bool allow = true;
-
-            // Create a warning prompt if the user hasn't disabled this warning.
-            var warningDisabled = Program.State.DisableFlagWarning;
-
-            if (!warningDisabled)
-            {
-                SystemSounds.Hand.Play();
-                allow = false;
-
-                using (Form warningPrompt = createFlagWarningPrompt())
-                {
-                    warningPrompt.ShowDialog();
-
-                    if (warningPrompt.DialogResult == DialogResult.Yes)
-                    {
-                        Program.State.DisableFlagWarning = warningPrompt.Enabled;
-                        allow = true;
-                    }
-                }
-            }
-
-            if (allow)
-            {
-                string branch = getSelectedBranch();
-
-                Enabled = false;
-                UseWaitCursor = true;
-
-                var infoTask = PlayerBootstrapper.GetCurrentVersionInfo(branch);
-                var info = await infoTask.ConfigureAwait(true);
-
-                Hide();
-
-                var updateTask = BootstrapperForm.BringUpToDate(branch, info.VersionGuid, "Some newer flags might be missing.");
-                await updateTask.ConfigureAwait(true);
-
-                using (FlagEditor editor = new FlagEditor())
-                    editor.ShowDialog();
-
-                Show();
-                BringToFront();
-
-                Enabled = true;
-                UseWaitCursor = false;
-            }
+            selectChannel(channelSelect.Text);
+            e.SuppressKeyPress = true;
         }
     }
 }

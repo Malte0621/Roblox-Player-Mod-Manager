@@ -2,18 +2,17 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-using Microsoft.Win32;
+using Newtonsoft.Json;
 using RobloxDeployHistory;
+using Konscious.Security.Cryptography;
 
 namespace RobloxPlayerModManager
 {
@@ -25,27 +24,15 @@ namespace RobloxPlayerModManager
         [DllImport("user32.dll")]
         static extern bool FlashWindow(IntPtr hWnd, bool bInvert);
 
-        private const string appSettingsXml =
-            "<Settings>\n" +
-            "   <ContentFolder>content</ContentFolder>\n" +
-            "   <BaseUrl>http://www.roblox.com</BaseUrl>\n" +
-            "</Settings>";
-        
-        private const string clientSettingsJson =
-            "{\n" +
-            "\n" +
-            "}";
+        private static string AppSettings_XML;
+        private static string OAuth2Config_JSON;
+
+        private const string RepoBranch = "main";
+        private const string RepoOwner = "diamond3500";
+        private const string RepoName = "Roblox-Studio-Mod-Manager";
 
         private const string UserAgent = "RobloxPlayerModManager";
         public const string StartEvent = "RobloxPlayerModManagerStart";
-
-        private static readonly WebClient http = new WebClient()
-        {
-            Headers = new WebHeaderCollection
-            {
-                { HttpRequestHeader.UserAgent, UserAgent }
-            }
-        };
 
         public event MessageEventHandler EchoFeed;
         public event MessageEventHandler StatusChanged;
@@ -53,11 +40,12 @@ namespace RobloxPlayerModManager
         public event ChangeEventHandler<int> ProgressChanged;
         public event ChangeEventHandler<ProgressBarStyle> ProgressBarStyleChanged;
 
-        private readonly RegistryKey mainRegistry;
-        private readonly RegistryKey versionRegistry;
-        private readonly RegistryKey pkgRegistry;
-        private readonly RegistryKey fileRegistry;
+        private readonly IBootstrapperState mainState;
+        private readonly VersionManifest versionRegistry;
+        private readonly Dictionary<string, string> fileRegistry;
+        private readonly Dictionary<string, PackageState> pkgRegistry;
 
+        private Dictionary<string, string[]> bySignature;
         private Dictionary<string, string> newManifestEntries;
         private HashSet<string> writtenFiles;
         private FileManifest fileManifest;
@@ -67,36 +55,10 @@ namespace RobloxPlayerModManager
         private int _progress = -1;
         private int _maxProgress = -1;
         private ProgressBarStyle _progressBarStyle;
+        private readonly object ProgressLock = new object();
 
-        public static readonly IReadOnlyDictionary<string, string> KnownRoots = new Dictionary<string, string>()
-        {
-            { "content-platform-fonts.zip",    @"PlatformContent\pc\fonts\"    },
-            { "content-terrain.zip",           @"PlatformContent\pc\terrain\"  },
-            { "content-textures3.zip",         @"PlatformContent\pc\textures\" },
-
-            { "extracontent-translations.zip", @"ExtraContent\translations\" },
-            { "extracontent-luapackages.zip",  @"ExtraContent\LuaPackages\"  },
-            { "extracontent-models.zip",  @"ExtraContent\models\"  },
-            { "extracontent-places.zip",  @"ExtraContent\places\"  },
-            { "extracontent-textures.zip",     @"ExtraContent\textures\"     },
-            { "extracontent-scripts.zip",      @"ExtraContent\scripts\"      },
-
-            { "content-sky.zip",       @"content\sky\"      },
-            { "content-fonts.zip",     @"content\fonts\"    },
-            { "content-avatar.zip",    @"content\avatar\"   },
-            { "content-models.zip",    @"content\models\"   },
-            { "content-sounds.zip",    @"content\sounds\"   },
-            { "content-configs.zip",   @"content\configs\"  },
-            { "content-textures2.zip", @"content\textures\" },
-
-            { "ssl.zip",          @"ssl\"         },
-
-            { "RobloxPlayer.zip", @"" },
-        };
-
-        public static readonly IReadOnlyList<string> BadManifests = new List<string>()
-        {
-        };
+        public static readonly List<string> BadManifests = new List<string>();
+        public static readonly Dictionary<string, string> KnownRoots = new Dictionary<string, string>();
 
         public int Progress
         {
@@ -149,40 +111,40 @@ namespace RobloxPlayerModManager
             }
         }
 
-        public string Branch { get; set; } = "roblox";
+        public Channel Channel { get; set; } = "LIVE";
         public string OverridePlayerDirectory { get; set; } = "";
 
         public bool CanShutdownPlayer { get; set; } = true;
         public bool CanForcePlayerShutdown { get; set; } = false;
 
         public bool ForceInstall { get; set; } = false;
-        public bool dontUpdate { get; set; } = false;
         public bool SetStartEvent { get; set; } = false;
         public bool GenerateMetadata { get; set; } = false;
         public bool RemapExtraContent { get; set; } = false;
         public bool ApplyModManagerPatches { get; set; } = false;
 
-        public PlayerBootstrapper(RegistryKey workRegistry = null)
+        public static async Task<string[]> FetchKnownChannels()
         {
-            if (workRegistry == null)
-                mainRegistry = Program.MainRegistry;
-            else
-                mainRegistry = workRegistry;
-
-            Contract.Requires(mainRegistry != null);
-            
-            if (!mainRegistry.GetBool("Deprecate MD5"))
+            using (var http = new WebClient())
             {
-                // The manifest registry needs to be reset.
-                mainRegistry.SetValue("Deprecate MD5", true);
-                mainRegistry.DeleteSubKeyTree("VersionData", false);
-                mainRegistry.DeleteSubKeyTree("FileManifest", false);
-                mainRegistry.DeleteSubKeyTree("PackageManifest", false);
-            }
+                var getJson = http.DownloadStringTaskAsync($"https://raw.githubusercontent.com/{RepoOwner}/{RepoName}/{RepoBranch}/Config/KnownChannels.json");
+                var json = await getJson.ConfigureAwait(false);
 
-            versionRegistry = mainRegistry.GetSubKey("VersionData");
-            pkgRegistry = mainRegistry.GetSubKey("PackageManifest");
-            fileRegistry = mainRegistry.GetSubKey("FileManifest");
+                var result = JsonConvert.DeserializeObject<string[]>(json);
+                return result;
+            }
+        }
+
+        public PlayerBootstrapper(IBootstrapperState state = null)
+        {
+            if (state == null)
+                mainState = Program.State;
+            else
+                mainState = state;
+
+            versionRegistry = mainState.VersionData;
+            pkgRegistry = mainState.PackageManifest;
+            fileRegistry = mainState.FileManifest;
         }
 
         private void echo(string message)
@@ -213,9 +175,9 @@ namespace RobloxPlayerModManager
 
         private static string computeSignature(Stream source)
         {
-            using (SHA256 sha256 = SHA256.Create())
+            using (var blake2b = new HMACBlake2B(16 * 8))
             {
-                byte[] hash = sha256.ComputeHash(source);
+                byte[] hash = blake2b.ComputeHash(source);
 
                 string result = BitConverter
                     .ToString(hash)
@@ -230,12 +192,12 @@ namespace RobloxPlayerModManager
         {
             string signature;
 
-            using (Stream stream = entry.Open())
+            using (var stream = entry.Open())
                 signature = computeSignature(stream);
 
             return signature;
         }
-        
+
         private void appendNewManifestEntry(string key, string value)
         {
             if (newManifestEntries == null)
@@ -323,20 +285,24 @@ namespace RobloxPlayerModManager
                     string key = pair.Key,
                            value = pair.Value;
 
+                    if (key == null || value == null)
+                        continue;
+
                     if (fileManifest.ContainsKey(key))
                         continue;
 
-                    fileRegistry.SetValue(key, value);
+                    fileRegistry[key] = value;
                     fileManifest[key] = value;
                 }
             }
 
-            var fileNames = fileRegistry
-                .GetValueNames()
-                .ToList();
+            var fileNames = fileRegistry.Keys.ToList();
 
             foreach (string fileName in fileNames)
             {
+                if (fileName == null)
+                    continue;
+
                 string filePath = Path.Combine(PlayerDir, fileName);
                 string lookupKey = fileName;
 
@@ -349,17 +315,17 @@ namespace RobloxPlayerModManager
                     if (File.Exists(filePath))
                     {
                         var info = new FileInfo(filePath);
-                        string oldHash = fileRegistry.GetString(fileName);
-                        
+                        string oldHash = fileRegistry[fileName];
+
                         if (oldHash?.Length > 32)
-                            if (info.Extension == ".dll" || info.Name == "qmldir")
+                            if (info.Extension == ".dll" || info.Name == "qmldir" || filePath.Contains("api-docs"))
                                 continue;
 
                         echo($"Deleting unused file {fileName}");
 
                         try
                         {
-                            fileRegistry.DeleteValue(fileName);
+                            fileRegistry.Remove(fileName);
                             File.Delete(filePath);
                         }
                         catch (IOException)
@@ -371,30 +337,29 @@ namespace RobloxPlayerModManager
                             Console.WriteLine($"UnauthorizedAccessException thrown while trying to delete {fileName}");
                         }
                     }
-                    else if (fileNames.Contains(fileName))
+                    else if (fileRegistry.ContainsKey(fileName))
                     {
-                        fileRegistry.DeleteValue(fileName);
+                        fileRegistry.Remove(fileName);
                     }
                 }
             }
         }
 
-        public static async Task<ClientVersionInfo> GetTargetVersionInfo(string branch, string targetVersion, RegistryKey versionRegistry = null)
+        public static async Task<ClientVersionInfo> GetTargetVersionInfo(Channel channel, string targetVersion, VersionManifest versionRegistry = null)
         {
             if (versionRegistry == null)
-                versionRegistry = Program.VersionRegistry;
+                versionRegistry = Program.State.VersionData;
 
             var logData = await PlayerDeployLogs
-                .Get(branch)
+                .Get(channel)
                 .ConfigureAwait(false);
 
             HashSet<DeployLog> targets;
 
-            //if (Environment.Is64BitOperatingSystem)
-            //    targets = logData.CurrentLogs_x64;
-            //else
-            //    targets = logData.CurrentLogs_x86;
-            targets = logData.CurrentLogs_x86; // No 64-bit player yet.
+            if (Environment.Is64BitOperatingSystem)
+                targets = logData.CurrentLogs_x64;
+            else
+                targets = logData.CurrentLogs_x86;
 
             DeployLog target = targets
                 .Where(log => log.VersionId == targetVersion)
@@ -402,21 +367,21 @@ namespace RobloxPlayerModManager
 
             if (target == null)
             {
-                var result = GetCurrentVersionInfo(branch, versionRegistry);
+                var result = GetCurrentVersionInfo(channel, versionRegistry);
                 return await result.ConfigureAwait(false);
             }
 
             return new ClientVersionInfo(target);
         }
 
-        public static async Task<ClientVersionInfo> GetCurrentVersionInfo(string branch, RegistryKey versionRegistry = null, string targetVersion = "")
+        public static async Task<ClientVersionInfo> GetCurrentVersionInfo(Channel channel, VersionManifest versionRegistry = null, string targetVersion = "")
         {
             if (versionRegistry == null)
-                versionRegistry = Program.VersionRegistry;
+                versionRegistry = Program.State.VersionData;
 
             if (!string.IsNullOrEmpty(targetVersion))
             {
-                var result = GetTargetVersionInfo(branch, targetVersion, versionRegistry);
+                var result = GetTargetVersionInfo(channel, targetVersion, versionRegistry);
                 return await result.ConfigureAwait(false);
             }
 
@@ -424,25 +389,27 @@ namespace RobloxPlayerModManager
             ClientVersionInfo info;
 
             var logData = await PlayerDeployLogs
-                .Get(branch)
+                .Get(channel)
                 .ConfigureAwait(false);
 
-            DeployLog build_x86 = logData.CurrentLogs_x86.Last();
-            // DeployLog build_x64 = logData.CurrentLogs_x64.Last();
+            DeployLog build_x86 = logData.CurrentLogs_x86.LastOrDefault();
+            DeployLog build_x64 = logData.CurrentLogs_x64.LastOrDefault();
 
-            //if (is64Bit)
-            //    info = new ClientVersionInfo(build_x64);
-            //else
-            //    info = new ClientVersionInfo(build_x86);
-            info = new ClientVersionInfo(build_x86); // No 64-bit player yet.
+            if (is64Bit)
+                info = new ClientVersionInfo(build_x64);
+            else
+                info = new ClientVersionInfo(build_x86);
 
-            versionRegistry.SetValue("LatestGuid_x86", build_x86.VersionGuid);
-            // versionRegistry.SetValue("LatestGuid_x64", build_x64.VersionGuid);
+            if (build_x86 != null)
+                versionRegistry.LatestGuid_x86 = build_x86.VersionGuid;
+
+            if (build_x64 != null)
+                versionRegistry.LatestGuid_x64 = build_x64.VersionGuid;
 
             return info;
         }
 
-        private static string fixFilePath(string pkgName, string filePath)
+        private string fixFilePath(string pkgName, string filePath)
         {
             string pkgDir = pkgName.Replace(".zip", "");
 
@@ -450,25 +417,28 @@ namespace RobloxPlayerModManager
                 if (!filePath.StartsWith(pkgDir, Program.StringFormat))
                     filePath = pkgDir + '\\' + filePath;
 
+            if (RemapExtraContent)
+                filePath = filePath.Replace("ExtraContent", "content");
+
             return filePath.Replace('/', '\\');
         }
 
         private bool shouldFetchPackage(Package package)
         {
             string pkgName = package.Name;
-            var pkgInfo = pkgRegistry.GetSubKey(pkgName);
 
-            string oldSig = pkgInfo.GetString("Signature");
+            if (!pkgRegistry.TryGetValue(pkgName, out var pkgInfo))
+            {
+                pkgInfo = new PackageState();
+                pkgRegistry[pkgName] = pkgInfo;
+            }
+
+            string oldSig = pkgInfo.Signature;
             string newSig = package.Signature;
 
-            if (oldSig == newSig && !ForceInstall && File.Exists(GetPlayerPath()))
+            if (oldSig == newSig && !ForceInstall)
             {
-                int fileCount = pkgInfo.GetInt("NumFiles");
                 echo($"Package '{pkgName}' hasn't changed between builds, skipping.");
-
-                MaxProgress += fileCount;
-                Progress += fileCount;
-
                 return false;
             }
 
@@ -480,14 +450,14 @@ namespace RobloxPlayerModManager
             echo($"Verifying availability of: {package.Name}");
 
             string pkgName = package.Name;
-            var zipFileUrl = new Uri($"https://s3.amazonaws.com/setup.{Branch}.com/{buildVersion}-{pkgName}");
+            var zipFileUrl = new Uri($"{Channel.BaseUrl}/{buildVersion}-{pkgName}");
 
             var request = WebRequest.Create(zipFileUrl) as HttpWebRequest;
             request.Headers.Set("UserAgent", UserAgent);
             request.Method = "HEAD";
 
             var response = await request
-                .GetResponseAsync() 
+                .GetResponseAsync()
                 .ConfigureAwait(false)
                 as HttpWebResponse;
 
@@ -501,24 +471,46 @@ namespace RobloxPlayerModManager
         {
             byte[] result = null;
             string pkgName = package.Name;
-            string zipFileUrl = $"https://s3.amazonaws.com/setup.{Branch}.com/{buildVersion}-{pkgName}";
+            string zipFileUrl = $"{Channel.BaseUrl}/{buildVersion}-{pkgName}";
 
             using (var localHttp = new WebClient())
             {
+                int lastProgress = 0;
+                bool setMaxProgress = false;
                 localHttp.Headers.Set("UserAgent", UserAgent);
+
+                localHttp.DownloadProgressChanged += new DownloadProgressChangedEventHandler((sender, e) =>
+                {
+                    lock (ProgressLock)
+                    {
+                        if (!setMaxProgress)
+                        {
+                            MaxProgress += (int)e.TotalBytesToReceive;
+                            setMaxProgress = true;
+                        }
+
+                        int progress = (int)e.BytesReceived;
+
+                        if (progress > lastProgress)
+                        {
+                            int diff = progress - lastProgress;
+                            lastProgress = progress;
+                            Progress += diff;
+                        }
+                    }
+                });
+
                 echo($"Installing package {zipFileUrl}");
-                MaxProgress++;
-                
+
                 var getFile = localHttp.DownloadDataTaskAsync(zipFileUrl);
                 byte[] fileContents = await getFile.ConfigureAwait(false);
-                    
+
                 // If the size of the file we downloaded does not match the packed 
                 // size specified in the manifest, then this file isn't valid.
 
                 if (fileContents.Length != package.PackedSize)
                     throw new InvalidDataException($"{pkgName} expected packed size: {package.PackedSize} but got: {fileContents.Length}");
 
-                Progress++;
                 result = fileContents;
             }
 
@@ -529,17 +521,19 @@ namespace RobloxPlayerModManager
         {
             var data = package.Data;
             string pkgName = package.Name;
-
-            var pkgInfo = pkgRegistry.GetSubKey(pkgName);
             string PlayerDir = GetLocalPlayerDirectory();
+
+            if (!pkgRegistry.TryGetValue(pkgName, out var pkgInfo))
+            {
+                pkgInfo = new PackageState();
+                pkgRegistry[pkgName] = pkgInfo;
+            }
 
             string downloads = getDirectory(PlayerDir, "downloads");
             string zipExtractPath = Path.Combine(downloads, pkgName);
 
             File.WriteAllBytes(zipExtractPath, data);
 
-            if (zipExtractPath.EndsWith(".zip"))
-            {
                 using (var archive = ZipFile.OpenRead(zipExtractPath))
                 {
                     var deferred = new Dictionary<ZipArchiveEntry, string>();
@@ -550,18 +544,25 @@ namespace RobloxPlayerModManager
                         .Count();
 
                     string localRootDir = null;
-                    MaxProgress += numFiles;
 
                     if (KnownRoots.ContainsKey(pkgName))
                         localRootDir = KnownRoots[pkgName];
 
                     foreach (ZipArchiveEntry entry in archive.Entries)
                     {
+                        bool skip = false;
+
                         if (entry.Length == 0)
-                        {
-                            Progress++;
+                            skip = true;
+
+                        if (entry.Name.EndsWith(".robloxrc", Program.StringFormat))
+                            skip = true;
+
+                        if (entry.Name.EndsWith(".luarc", Program.StringFormat))
+                            skip = true;
+
+                        if (skip)
                             continue;
-                        }
 
                         string newFileSig = null;
                         string entryPath = entry.FullName.Replace('/', '\\');
@@ -571,22 +572,23 @@ namespace RobloxPlayerModManager
 
                         if (localRootDir != null)
                         {
-                            bool hasEntryPath = fileManifest.ContainsKey(entryPath);
-
-                            // If we can't find this file in the signature lookup table,
-                            // try appending the local directory to it. This resolves some
-                            // edge cases relating to the fixFilePath function above.
+                            // Append local directory to our path.
+                            var manifestKey = localRootDir + entryPath;
+                            bool hasEntryPath = fileManifest.ContainsKey(manifestKey);
 
                             if (!hasEntryPath)
                             {
-                                entryPath = localRootDir + entryPath;
-                                hasEntryPath = fileManifest.ContainsKey(entryPath);
+                                // If we can't find this file in the signature lookup table,
+                                // try falling back to the entryPath.
+
+                                manifestKey = entryPath;
+                                hasEntryPath = fileManifest.ContainsKey(manifestKey);
                             }
 
                             // If we can find this file path in the file manifest, then we will
                             // use its pre-computed signature to check if the file has changed.
 
-                            newFileSig = hasEntryPath ? fileManifest[entryPath] : null;
+                            newFileSig = hasEntryPath ? fileManifest[manifestKey] : null;
                         }
                         else
                         {
@@ -601,11 +603,8 @@ namespace RobloxPlayerModManager
                             newFileSig = computeSignature(entry);
 
                         // Now check what files this signature corresponds with.
-                        var files = fileManifest
-                            .Where(pair => pair.Value == newFileSig)
-                            .Select(pair => pair.Key);
 
-                        if (files.Any())
+                        if (bySignature.TryGetValue(newFileSig, out var files))
                         {
                             foreach (string file in files)
                             {
@@ -665,59 +664,13 @@ namespace RobloxPlayerModManager
                     // Update the signature in the package registry so we can check
                     // if this zip file needs to be updated in future versions.
 
-                    pkgInfo.SetValue("Signature", package.Signature);
-                    pkgInfo.SetValue("NumFiles", numFiles);
+                    pkgInfo.Signature = package.Signature;
+                    pkgInfo.NumFiles = numFiles;
                 }
-            }
-            else
-            {
-                string localRootDir = null;
-                if (KnownRoots.ContainsKey(pkgName))
-                    localRootDir = KnownRoots[pkgName];
-                if (localRootDir != null)
-                {
-                    if (zipExtractPath.EndsWith(".robloxrc", Program.StringFormat))
-                        return;
-
-                    if (zipExtractPath.EndsWith(".luarc", Program.StringFormat))
-                        return;
-
-                    string filePath = fixFilePath(pkgName, zipExtractPath);
-
-                    if (writtenFiles.Contains(filePath))
-                        return;
-
-                    Progress++;
-
-                    string extractPath = Path.Combine(PlayerDir, filePath);
-                    string extractDir = Path.GetDirectoryName(extractPath);
-
-                    getDirectory(extractDir);
-
-                    if (File.Exists(extractPath))
-                        File.Delete(extractPath);
-
-                    echo($"Writing {filePath}...");
-                    try
-                    {
-                        File.Copy(zipExtractPath, extractPath);
-                    }
-                    catch
-                    {
-                        echo($"FILE WRITE FAILED: {filePath} (This build may not run as expected!)");
-                    }
-                }
-            }
         }
 
         private void WritePackageFile(string PlayerDir, string pkgName, string file, string newFileSig, ZipArchiveEntry entry)
         {
-            if (file.EndsWith(".robloxrc", Program.StringFormat))
-                return;
-
-            if (file.EndsWith(".luarc", Program.StringFormat))
-                return;
-
             string filePath = fixFilePath(pkgName, file);
 
             if (writtenFiles.Contains(filePath))
@@ -728,11 +681,11 @@ namespace RobloxPlayerModManager
 
             if (!ForceInstall)
             {
-                string oldFileSig = fileRegistry.GetString(filePath);
+                if (!fileRegistry.TryGetValue(filePath, out string oldFileSig))
+                    oldFileSig = "";
 
                 if (oldFileSig == newFileSig)
                 {
-                    Progress++;
                     return;
                 }
             }
@@ -750,14 +703,13 @@ namespace RobloxPlayerModManager
                 echo($"Writing {filePath}...");
                 entry.ExtractToFile(extractPath);
 
-                fileRegistry.SetValue(filePath, newFileSig);
+                fileRegistry[filePath] = newFileSig;
             }
             catch (UnauthorizedAccessException)
             {
                 echo($"FILE WRITE FAILED: {filePath} (This build may not run as expected!)");
             }
 
-            Progress++;
             writtenFiles.Add(filePath);
         }
 
@@ -822,7 +774,7 @@ namespace RobloxPlayerModManager
                     {
                         DialogResult result = DialogResult.OK;
 
-                        if (mainRegistry == Program.MainRegistry)
+                        if (mainState == Program.State)
                         {
                             result = MessageBox.Show
                             (
@@ -857,220 +809,244 @@ namespace RobloxPlayerModManager
             setStatus("Checking for updates");
             echo("Checking build installation...");
 
-            string currentVersion = versionRegistry.GetString("VersionGuid");
-            string currentBranch;
+            string baseConfigUrl = $"https://raw.githubusercontent.com/{RepoOwner}/{RepoName}/{RepoBranch}/Config/";
+            string currentVersion = versionRegistry.VersionGuid;
+            string currentChannel;
 
-            if (mainRegistry.Name.EndsWith(Branch, Program.StringFormat))
-                currentBranch = Branch;
+            if (mainState == Program.State)
+                currentChannel = mainState.Channel;
             else
-                currentBranch = mainRegistry.GetString("BuildBranch", "roblox");
+                currentChannel = Channel;
 
-            var getVersionInfo = GetCurrentVersionInfo(currentBranch, versionRegistry, targetVersion);
+            var getVersionInfo = GetCurrentVersionInfo(currentChannel, versionRegistry, targetVersion);
             ClientVersionInfo versionInfo = await getVersionInfo.ConfigureAwait(true);
-            
+
+            string PlayerDir = GetLocalPlayerDirectory();
             buildVersion = versionInfo.VersionGuid;
 
-            if (currentVersion != buildVersion || ForceInstall || !File.Exists(GetPlayerPath()))
+            if (currentVersion != buildVersion || ForceInstall)
             {
-                if (dontUpdate && File.Exists(GetPlayerPath()))
+                echo("This build needs to be installed!");
+                bool PlayerClosed = true;
+
+                if (CanShutdownPlayer)
                 {
-                    echo("dontUpdate: true, ignoring update.");
+                    var closePlayer = shutdownPlayerProcesses();
+                    PlayerClosed = await closePlayer.ConfigureAwait(true);
+                }
+
+                if (PlayerClosed)
+                {
+                    string binaryType = GetPlayerBinaryType();
+                    string versionId = versionInfo.Version;
+
+                    var installVersion = versionId
+                        .Split('.')
+                        .Select(int.Parse)
+                        .Skip(1)
+                        .First();
+
+                    KnownRoots.Clear();
+                    BadManifests.Clear();
+
+                    using (var http = new WebClient())
+                    {
+                        var json = await http
+                            .DownloadStringTaskAsync(baseConfigUrl + "KnownRoots.json")
+                            .ConfigureAwait(false);
+
+                        var knownRoots = JsonConvert.DeserializeObject<Dictionary<string, KnownRoot>>(json);
+
+                        foreach (var pair in knownRoots)
+                        {
+                            string name = pair.Key;
+                            var knownRoot = pair.Value;
+
+                            if (installVersion < knownRoot.MinVersion)
+                                continue;
+
+                            string file = name + ".zip";
+                            string extractPath = knownRoot.ExtractTo;
+
+                            if (!string.IsNullOrEmpty(extractPath))
+                                extractPath += '/';
+
+                            if (knownRoot.BadManifest)
+                                BadManifests.Add(name);
+
+                            KnownRoots.Add(file, extractPath);
+                        }
+                    }
+
+                    setStatus($"Installing Version {versionId} of Roblox Player...");
+                    echo("Grabbing package manifest...");
+
+                    var pkgManifest = await PackageManifest
+                        .Get(versionInfo)
+                        .ConfigureAwait(true);
+
+                    echo("Grabbing file manifest...");
+
+                    fileManifest = await FileManifest
+                        .Get(versionInfo, RemapExtraContent)
+                        .ConfigureAwait(true);
+
+                    var taskQueue = new List<Task>();
+                    writtenFiles = new HashSet<string>();
+
+                    bySignature =
+                        (from pair in fileManifest
+                         let key = pair.Key
+                         let value = pair.Value
+                         group key by value)
+                        .ToDictionary(group => group.Key, group => group.ToArray());
+
+                    Progress = 0;
+                    MaxProgress = 0;
+                    ProgressBarStyle = ProgressBarStyle.Continuous;
+
+                    foreach (Package package in pkgManifest)
+                    {
+                        package.ShouldInstall = shouldFetchPackage(package);
+
+                        if (!package.ShouldInstall)
+                        {
+                            package.Exists = true;
+                            continue;
+                        }
+
+                        Task verify = Task.Run(async () =>
+                        {
+                            var doesExist = packageExists(package);
+                            package.Exists = await doesExist.ConfigureAwait(false);
+                        });
+
+                        taskQueue.Add(verify);
+                    }
+
+                    await Task
+                       .WhenAll(taskQueue)
+                       .ConfigureAwait(true);
+
+                    taskQueue.Clear();
+
+                    foreach (Package package in pkgManifest)
+                    {
+                        if (!package.Exists)
+                        {
+                            setStatus("Installation Failed!");
+                            echo($"ERROR WHILE INSTALLING: Package {package.Name} could not be fetched! Skipping installation for now.");
+
+                            Progress = 1;
+                            MaxProgress = 1;
+                            ProgressBarStyle = ProgressBarStyle.Marquee;
+
+                            var timeout = Task.Delay(2000);
+                            await timeout.ConfigureAwait(false);
+
+                            return false;
+                        }
+
+                        if (!package.ShouldInstall)
+                            continue;
+
+                        var installer = Task.Run(async () =>
+                        {
+                            var install = installPackage(package);
+                            package.Data = await install.ConfigureAwait(false);
+
+                            extractPackage(package);
+                            return true;
+                        });
+
+                        taskQueue.Add(installer);
+                    }
+
+                    await Task
+                        .WhenAll(taskQueue)
+                        .ConfigureAwait(true);
+
+                    foreach (var task in taskQueue)
+                    {
+                        bool passed = true;
+
+                        if (task is Task<bool> boolTask)
+                            if (!boolTask.Result)
+                                passed = false;
+
+                        if (task.IsFaulted)
+                            passed = false;
+
+                        if (!passed)
+                        {
+                            setStatus("Installation Failed!");
+                            echo("One or more packages failed to install correctly! Skipping update for now...");
+
+                            await Task
+                                .Delay(500)
+                                .ConfigureAwait(false);
+
+                            return false;
+                        }
+                    }
+
+                    taskQueue.Clear();
+
+                    foreach (Package package in pkgManifest)
+                    {
+                        if (!package.ShouldInstall)
+                            continue;
+
+                        var extract = Task.Run(() => extractPackage(package));
+                        taskQueue.Add(extract);
+                    }
+
+                    await Task
+                        .WhenAll(taskQueue)
+                        .ConfigureAwait(true);
+
+                    setStatus("Deleting unused files...");
+                    deleteUnusedFiles();
+
+                    if (GenerateMetadata)
+                    {
+                        echo("Writing metadata...");
+
+                        string pkgManifestPath = Path.Combine(PlayerDir, "rbxPkgManifest.txt");
+                        File.WriteAllText(pkgManifestPath, pkgManifest.RawData);
+
+                        string fileManifestPath = Path.Combine(PlayerDir, "rbxManifest.txt");
+                        File.WriteAllText(fileManifestPath, fileManifest.RawData);
+
+                        string versionPath = Path.Combine(PlayerDir, "version.txt");
+                        File.WriteAllText(versionPath, versionId);
+
+                        string versionGuidPath = Path.Combine(PlayerDir, "version-guid.txt");
+                        File.WriteAllText(versionGuidPath, buildVersion);
+
+                        echo("Dumping API...");
+                        await Task.Delay(2000);
+
+                        string PlayerPath = GetLocalPlayerPath();
+                        string apiPath = Path.Combine(PlayerDir, "API-Dump.json");
+
+                        var dumpApi = Process.Start(PlayerPath, $"-API \"{apiPath}\"");
+                        dumpApi.WaitForExit();
+                    }
+
+                    ProgressBarStyle = ProgressBarStyle.Marquee;
+
+                    if (mainState == Program.State)
+                        mainState.Channel = Channel;
+
+                    versionRegistry.Version = versionId;
+                    versionRegistry.VersionGuid = buildVersion;
+                    versionRegistry.VersionOverload = targetVersion;
                 }
                 else
                 {
-                    echo("This build needs to be installed!");
-                    bool PlayerClosed = true;
-
-                    if (CanShutdownPlayer)
-                    {
-                        var closePlayer = shutdownPlayerProcesses();
-                        PlayerClosed = await closePlayer.ConfigureAwait(true);
-                    }
-
-                    if (PlayerClosed)
-                    {
-                        string binaryType = GetPlayerBinaryType();
-                        string PlayerDir = GetLocalPlayerDirectory();
-                        string versionId = versionInfo.Version;
-
-                        setStatus($"Installing Version {versionId} of Roblox Player...");
-                        echo("Grabbing package manifest...");
-
-                        var pkgManifest = await PackageManifest
-                            .Get(Branch, buildVersion)
-                            .ConfigureAwait(true);
-
-                        echo("Grabbing file manifest...");
-
-                        fileManifest = await FileManifest
-                            .Get(Branch, buildVersion, RemapExtraContent)
-                            .ConfigureAwait(true);
-
-                        var taskQueue = new List<Task>();
-                        writtenFiles = new HashSet<string>();
-
-                        Progress = 0;
-                        MaxProgress = 0;
-                        ProgressBarStyle = ProgressBarStyle.Continuous;
-
-                        foreach (Package package in pkgManifest)
-                        {
-                            package.ShouldInstall = shouldFetchPackage(package);
-
-                            if (!package.ShouldInstall)
-                            {
-                                package.Exists = true;
-                                continue;
-                            }
-
-                            Task verify = Task.Run(async () =>
-                            {
-                                var doesExist = packageExists(package);
-                                package.Exists = await doesExist.ConfigureAwait(false);
-                            });
-
-                            taskQueue.Add(verify);
-                        }
-
-                        await Task
-                            .WhenAll(taskQueue)
-                            .ConfigureAwait(true);
-
-                        taskQueue.Clear();
-
-                        foreach (Package package in pkgManifest)
-                        {
-                            if (!package.Exists)
-                            {
-                                setStatus("Installation Failed!");
-                                echo($"ERROR WHILE INSTALLING: Package {package.Name} could not be fetched! Skipping installation for now.");
-
-                                Progress = 1;
-                                MaxProgress = 1;
-                                ProgressBarStyle = ProgressBarStyle.Marquee;
-
-                                var timeout = Task.Delay(2000);
-                                await timeout.ConfigureAwait(false);
-
-                                return false;
-                            }
-
-                            if (!package.ShouldInstall)
-                                continue;
-
-                            var installer = Task.Run(async () =>
-                            {
-                                var install = installPackage(package);
-                                package.Data = await install.ConfigureAwait(false);
-
-                                extractPackage(package);
-                                return true;
-                            });
-
-                            taskQueue.Add(installer);
-                        }
-
-                        await Task
-                            .WhenAll(taskQueue)
-                            .ConfigureAwait(true);
-
-                        foreach (var task in taskQueue)
-                        {
-                            bool passed = true;
-
-                            if (task is Task<bool> boolTask)
-                                if (!boolTask.Result)
-                                    passed = false;
-
-                            if (task.IsFaulted)
-                                passed = false;
-
-                            if (!passed)
-                            {
-                                setStatus("Installation Failed!");
-                                echo("One or more packages failed to install correctly! Skipping update for now...");
-
-                                await Task
-                                    .Delay(500)
-                                    .ConfigureAwait(false);
-
-                                return false;
-                            }
-                        }
-
-                        taskQueue.Clear();
-
-                        foreach (Package package in pkgManifest)
-                        {
-                            if (!package.ShouldInstall)
-                                continue;
-
-                            var extract = Task.Run(() => extractPackage(package));
-                            taskQueue.Add(extract);
-                        }
-
-                        await Task
-                            .WhenAll(taskQueue)
-                            .ConfigureAwait(true);
-
-                        echo("Writing AppSettings.xml...");
-
-                        string appSettings = Path.Combine(PlayerDir, "AppSettings.xml");
-                        File.WriteAllText(appSettings, appSettingsXml);
-
-                        echo("Writing ClientSettings...");
-
-                        try
-                        {
-                            Directory.CreateDirectory(Path.Combine(PlayerDir, "ClientSettings"));
-                        }
-                        catch {}
-
-                        string clientSettings = Path.Combine(PlayerDir, "ClientSettings", "ClientAppSettings.json");
-                        File.WriteAllText(clientSettings, clientSettingsJson);
-
-                        setStatus("Deleting unused files...");
-                        deleteUnusedFiles();
-
-                        if (GenerateMetadata)
-                        {
-                            echo("Writing metadata...");
-
-                            string pkgManifestPath = Path.Combine(PlayerDir, "rbxPkgManifest.txt");
-                            File.WriteAllText(pkgManifestPath, pkgManifest.RawData);
-
-                            string fileManifestPath = Path.Combine(PlayerDir, "rbxManifest.txt");
-                            File.WriteAllText(fileManifestPath, fileManifest.RawData);
-
-                            string versionPath = Path.Combine(PlayerDir, "version.txt");
-                            File.WriteAllText(versionPath, versionId);
-
-                            string versionGuidPath = Path.Combine(PlayerDir, "version-guid.txt");
-                            File.WriteAllText(versionGuidPath, buildVersion);
-
-                            echo("Dumping API...");
-
-                            string PlayerPath = GetLocalPlayerPath();
-                            string apiPath = Path.Combine(PlayerDir, "API-Dump.json");
-
-                            var dumpApi = Process.Start(PlayerPath, $"-API \"{apiPath}\"");
-                            dumpApi.WaitForExit();
-                        }
-
-                        ProgressBarStyle = ProgressBarStyle.Marquee;
-
-                        if (mainRegistry.Name != Branch)
-                            mainRegistry.SetValue("BuildBranch", Branch);
-
-                        versionRegistry.SetValue("Version", versionId);
-                        versionRegistry.SetValue("VersionGuid", buildVersion);
-                        versionRegistry.SetValue("VersionOverload", targetVersion);
-                    }
-                    else
-                    {
-                        ProgressBarStyle = ProgressBarStyle.Marquee;
-                        echo("Update cancelled. Launching on current branch and version.");
-                    }
+                    ProgressBarStyle = ProgressBarStyle.Marquee;
+                    echo("Update cancelled. Launching on current branch and version.");
                 }
             }
             else
@@ -1078,10 +1054,26 @@ namespace RobloxPlayerModManager
                 echo("This version of Roblox Player has been installed!");
             }
 
+            using (var http = new WebClient())
+            {
+                OAuth2Config_JSON = await http.DownloadStringTaskAsync(baseConfigUrl + "OAuth2Config.json");
+                AppSettings_XML = await http.DownloadStringTaskAsync(baseConfigUrl + "AppSettings.xml");
+            }
+
+            string appSettings = Path.Combine(PlayerDir, "AppSettings.xml");
+            string oAuth2Config = Path.Combine(PlayerDir, "ApplicationConfig", "OAuth2Config.json");
+
+            echo("Writing AppSettings.xml...");
+            File.WriteAllText(appSettings, AppSettings_XML);
+
+            echo("Writing OAuth2Config.json...");
+            getDirectory(PlayerDir, "ApplicationConfig");
+            File.WriteAllText(oAuth2Config, OAuth2Config_JSON);
+
             // Only update the registry protocols if the main registry
             // is the global one assigned to the program itself.
 
-            if (mainRegistry == Program.MainRegistry)
+            if (mainState == Program.State)
             {
                 setStatus("Configuring Roblox Player...");
                 echo("Updating registry protocols...");
@@ -1091,8 +1083,8 @@ namespace RobloxPlayerModManager
 
             if (ApplyModManagerPatches && string.IsNullOrEmpty(OverridePlayerDirectory))
             {
-                // echo("Applying flag configuration...");
-                // FlagEditor.ApplyFlags();
+                echo("Applying flag configuration...");
+                FlagEditor.ApplyFlags();
 
                 // Secret feature only for me :(
                 // Feel free to patch in your own thing if you want.

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using RobloxDeployHistory;
 
 namespace RobloxPlayerModManager
 {
@@ -13,7 +14,9 @@ namespace RobloxPlayerModManager
 
     public class VersionManifest
     {
+        public string Channel = "LIVE";
         public string Version = "";
+
         public string VersionGuid = "";
         public string VersionOverload = "";
         public string LastExecutedVersion = "";
@@ -30,9 +33,8 @@ namespace RobloxPlayerModManager
 
     public interface IBootstrapperState
     {
-        bool DeprecateMD5 { get; set; }
-        string BuildBranch { get; set; }
-        
+        string Channel { get; set; }
+
         VersionManifest VersionData { get; set; }
         Dictionary<string, string> FileManifest { get; }
         Dictionary<string, PackageState> PackageManifest { get; }
@@ -40,12 +42,10 @@ namespace RobloxPlayerModManager
 
     public class ModManagerState : IBootstrapperState
     {
+        public string Channel { get; set; } = "LIVE";
         public string TargetVersion { get; set; } = "";
-        public string BuildBranch { get; set; } = "roblox";
 
         public bool DisableFlagWarning { get; set; } = false;
-        public bool DeprecateMD5 { get; set; } = true;
-
         public VersionManifest VersionData { get; set; } = new VersionManifest();
         public ExplorerIconManifest ExplorerIcons { get; set; } = new ExplorerIconManifest();
         public Dictionary<string, string> FileManifest { get; set; } = new Dictionary<string, string>();

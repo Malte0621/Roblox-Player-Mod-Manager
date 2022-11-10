@@ -3,6 +3,8 @@ using System.Diagnostics.Contracts;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
+using RobloxDeployHistory;
+
 namespace RobloxPlayerModManager
 {
     public partial class BootstrapperForm : Form
@@ -30,32 +32,39 @@ namespace RobloxPlayerModManager
 
         public async Task Bootstrap()
         {
-            string targetVersion = Program.GetString("TargetVersion");
-            var bootstrap = Bootstrapper.Bootstrap(targetVersion);
+            var state = Program.State;
+            var targetVersion = state.TargetVersion;
 
+            var bootstrap = Bootstrapper.Bootstrap(targetVersion);
             await bootstrap.ConfigureAwait(true);
         }
 
-        public static async Task BringUpToDate(string branch, string expectedVersion, string updateReason)
+        public static async Task BringUpToDate(Channel channel, string expectedVersion, string updateReason)
         {
-            string currentVersion = Program.VersionRegistry.GetString("VersionGuid");
+            var versionData = Program.State.VersionData;
+            string currentVersion = versionData.VersionGuid;
 
             if (currentVersion != expectedVersion)
             {
-                DialogResult check = MessageBox.Show
-                (
-                    "Roblox Player is out of date!\n"
-                    + updateReason +
-                    "\nWould you like to update now?",
+                DialogResult check = DialogResult.Yes;
 
-                    "Out of date!",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Warning
-                );
+                if (!string.IsNullOrEmpty(currentVersion))
+                {
+                    check = MessageBox.Show
+                    (
+                        "Roblox Player is out of date!\n"
+                        + updateReason +
+                        "\nWould you like to update now?",
+
+                        "Out of date!",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning
+                    );
+                }
 
                 if (check == DialogResult.Yes)
                 {
-                    var bootstrapper = new PlayerBootstrapper() { Branch = branch };
+                    var bootstrapper = new PlayerBootstrapper() { Channel = channel };
 
                     using (var installer = new BootstrapperForm(bootstrapper))
                     {
@@ -133,18 +142,18 @@ namespace RobloxPlayerModManager
                 switch (context)
                 {
                     case "Progress":
-                    {
-                        progressBar.Value = Math.Min(value, progressBar.Maximum);
-                        break;
-                    }
+                        {
+                            progressBar.Value = Math.Min(value, progressBar.Maximum);
+                            break;
+                        }
                     case "MaxProgress":
-                    {
-                        if (progressBar.Value > value)
-                            progressBar.Value = (value - 1);
+                        {
+                            if (progressBar.Value > value)
+                                progressBar.Value = (value - 1);
 
-                        progressBar.Maximum = value;
-                        break;
-                    }
+                            progressBar.Maximum = value;
+                            break;
+                        }
                 }
 
                 UpdateStatusMetric();
@@ -169,6 +178,8 @@ namespace RobloxPlayerModManager
 
         private void BootstrapperForm_FormClosed(object sender, FormClosedEventArgs e)
         {
+            Program.SaveState();
+
             if (exitOnClose && e.CloseReason == CloseReason.UserClosing)
             {
                 Application.Exit();
@@ -199,7 +210,7 @@ namespace RobloxPlayerModManager
                 Environment.Exit(0);
                 return;
             }
-            
+
             e.Cancel = true;
         }
     }
