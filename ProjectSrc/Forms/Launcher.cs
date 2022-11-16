@@ -36,7 +36,10 @@ namespace RobloxPlayerModManager
             UseWaitCursor = true;
 
             if (args != null)
+            {
                 openPlayerDirectory.Enabled = false;
+                LaunchBetaApp.Enabled = false;
+            }
 
             var channels = await PlayerBootstrapper.FetchKnownChannels();
 
