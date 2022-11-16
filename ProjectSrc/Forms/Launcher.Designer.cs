@@ -40,7 +40,7 @@
             this.targetVersion = new System.Windows.Forms.ComboBox();
             this.logo = new System.Windows.Forms.PictureBox();
             this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
+            this.LaunchBetaApp = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.logo)).BeginInit();
             this.SuspendLayout();
             // 
@@ -51,7 +51,7 @@
             this.launchPlayer.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.launchPlayer.Cursor = System.Windows.Forms.Cursors.Default;
             this.launchPlayer.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.launchPlayer.Location = new System.Drawing.Point(11, 130);
+            this.launchPlayer.Location = new System.Drawing.Point(11, 139);
             this.launchPlayer.Margin = new System.Windows.Forms.Padding(6, 3, 3, 3);
             this.launchPlayer.Name = "launchPlayer";
             this.launchPlayer.Size = new System.Drawing.Size(142, 23);
@@ -66,7 +66,7 @@
             this.manageMods.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.manageMods.Cursor = System.Windows.Forms.Cursors.Default;
             this.manageMods.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.manageMods.Location = new System.Drawing.Point(11, 159);
+            this.manageMods.Location = new System.Drawing.Point(11, 168);
             this.manageMods.Margin = new System.Windows.Forms.Padding(6, 3, 3, 3);
             this.manageMods.Name = "manageMods";
             this.manageMods.Size = new System.Drawing.Size(142, 23);
@@ -83,7 +83,7 @@
             this.channelSelect.Items.AddRange(new object[] {
             "LIVE",
             "zCanary"});
-            this.channelSelect.Location = new System.Drawing.Point(174, 138);
+            this.channelSelect.Location = new System.Drawing.Point(174, 139);
             this.channelSelect.Name = "channelSelect";
             this.channelSelect.Size = new System.Drawing.Size(152, 21);
             this.channelSelect.TabIndex = 10;
@@ -98,7 +98,7 @@
             this.channelLabel.CausesValidation = false;
             this.channelLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.channelLabel.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.channelLabel.Location = new System.Drawing.Point(171, 120);
+            this.channelLabel.Location = new System.Drawing.Point(171, 121);
             this.channelLabel.Margin = new System.Windows.Forms.Padding(0);
             this.channelLabel.Name = "channelLabel";
             this.channelLabel.Size = new System.Drawing.Size(57, 15);
@@ -111,7 +111,7 @@
             this.forceRebuild.AccessibleName = "Force Client Rebuild";
             this.forceRebuild.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.forceRebuild.AutoSize = true;
-            this.forceRebuild.Location = new System.Drawing.Point(175, 205);
+            this.forceRebuild.Location = new System.Drawing.Point(174, 207);
             this.forceRebuild.Margin = new System.Windows.Forms.Padding(2);
             this.forceRebuild.Name = "forceRebuild";
             this.forceRebuild.Size = new System.Drawing.Size(119, 17);
@@ -124,7 +124,7 @@
             this.openFlagEditor.AccessibleName = "Open Flag Editor";
             this.openFlagEditor.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.openFlagEditor.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.openFlagEditor.Location = new System.Drawing.Point(11, 188);
+            this.openFlagEditor.Location = new System.Drawing.Point(11, 197);
             this.openFlagEditor.Margin = new System.Windows.Forms.Padding(6, 3, 3, 3);
             this.openFlagEditor.Name = "openFlagEditor";
             this.openFlagEditor.Size = new System.Drawing.Size(142, 23);
@@ -138,7 +138,7 @@
             this.openPlayerDirectory.AccessibleName = "Just Open Player Path";
             this.openPlayerDirectory.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.openPlayerDirectory.AutoSize = true;
-            this.openPlayerDirectory.Location = new System.Drawing.Point(175, 224);
+            this.openPlayerDirectory.Location = new System.Drawing.Point(174, 228);
             this.openPlayerDirectory.Margin = new System.Windows.Forms.Padding(2);
             this.openPlayerDirectory.Name = "openPlayerDirectory";
             this.openPlayerDirectory.Size = new System.Drawing.Size(151, 17);
@@ -154,7 +154,7 @@
             this.targetVersionLabel.CausesValidation = false;
             this.targetVersionLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.targetVersionLabel.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.targetVersionLabel.Location = new System.Drawing.Point(171, 162);
+            this.targetVersionLabel.Location = new System.Drawing.Point(171, 163);
             this.targetVersionLabel.Name = "targetVersionLabel";
             this.targetVersionLabel.Size = new System.Drawing.Size(83, 15);
             this.targetVersionLabel.TabIndex = 17;
@@ -179,7 +179,7 @@
             this.targetVersion.FormattingEnabled = true;
             this.targetVersion.Items.AddRange(new object[] {
             "(Use Latest)"});
-            this.targetVersion.Location = new System.Drawing.Point(174, 179);
+            this.targetVersion.Location = new System.Drawing.Point(174, 181);
             this.targetVersion.Name = "targetVersion";
             this.targetVersion.Size = new System.Drawing.Size(152, 21);
             this.targetVersion.TabIndex = 18;
@@ -198,31 +198,36 @@
             // 
             // label1
             // 
+            this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(8, 228);
+            this.label1.Location = new System.Drawing.Point(8, 249);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(71, 13);
             this.label1.TabIndex = 24;
             this.label1.Text = "Version 0.2";
             this.label1.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
             // 
-            // label2
+            // LaunchBetaApp
             // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(12, 114);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(48, 13);
-            this.label2.TabIndex = 25;
-            this.label2.Text = "Version: ";
+            this.LaunchBetaApp.AccessibleName = "Just Open Player Path";
+            this.LaunchBetaApp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.LaunchBetaApp.AutoSize = true;
+            this.LaunchBetaApp.Location = new System.Drawing.Point(174, 249);
+            this.LaunchBetaApp.Margin = new System.Windows.Forms.Padding(2);
+            this.LaunchBetaApp.Name = "LaunchBetaApp";
+            this.LaunchBetaApp.Size = new System.Drawing.Size(121, 17);
+            this.LaunchBetaApp.TabIndex = 25;
+            this.LaunchBetaApp.Text = "Launch In Beta App";
+            this.LaunchBetaApp.UseVisualStyleBackColor = true;
             // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Control;
-            this.ClientSize = new System.Drawing.Size(335, 250);
-            this.Controls.Add(this.label2);
+            this.ClientSize = new System.Drawing.Size(335, 271);
+            this.Controls.Add(this.LaunchBetaApp);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.logo);
             this.Controls.Add(this.title);
@@ -263,7 +268,7 @@
         private System.Windows.Forms.ComboBox targetVersion;
         private System.Windows.Forms.PictureBox logo;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.CheckBox LaunchBetaApp;
     }
 }
 

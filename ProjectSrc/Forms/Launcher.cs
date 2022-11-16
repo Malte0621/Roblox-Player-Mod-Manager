@@ -338,6 +338,17 @@ namespace RobloxPlayerModManager
                 Arguments = $"-startEvent {PlayerBootstrapper.StartEvent}"
             };
 
+            // Beta App launch arguments
+
+            if (LaunchBetaApp.Checked == true)
+            {
+                robloxPlayerInfo.Arguments = "--app";
+            }
+            else
+            {
+                robloxPlayerInfo.Arguments = "";
+            }
+
             if (args != null)
             {
                 string firstArg = args[0];
@@ -381,7 +392,8 @@ namespace RobloxPlayerModManager
                             string browsertrackerid = argMap["browsertrackerid"];
                             string robloxLocale = argMap["robloxLocale"];
                             string gameLocale = argMap["gameLocale"];
-                            robloxPlayerInfo.Arguments += " --play -t " + gameinfo + " -j " + placelauncherurl + " -b " + browsertrackerid + " --launchtime " + launchtime + " --rloc " + robloxLocale + " --gloc " + gameLocale;
+                            string rchannel = argMap["channel"];
+                            robloxPlayerInfo.Arguments += " --app -t " + gameinfo + " -j " + placelauncherurl + " -b " + browsertrackerid + " --launchtime " + launchtime + " --rloc " + robloxLocale + " --gloc " + gameLocale + " -channel " + rchannel;
                         }
                     }
                 }
