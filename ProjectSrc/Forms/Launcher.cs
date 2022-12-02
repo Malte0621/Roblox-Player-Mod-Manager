@@ -5,14 +5,18 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Media;
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using System.Windows.Forms;
-
+using Newtonsoft.Json;
+using RestSharp;
 using RobloxDeployHistory;
 
 namespace RobloxPlayerModManager
 {
     public partial class Launcher : Form
     {
+        public string Version { get; private set; }
         private static VersionManifest versionRegistry => Program.State.VersionData;
         private readonly string[] args = null;
 
@@ -438,7 +442,41 @@ namespace RobloxPlayerModManager
 
             // Grab the version currently being targetted.
             string targetId = Program.State.TargetVersion;
-            const string latest = "(Use Latest)";
+
+            var VersionInfo = await ClientVersionInfo.Get(channel, "WindowsPlayer").ConfigureAwait(true);
+
+            var latest = VersionInfo.Version;
+
+            // Detects if the version is older or newer depending on channel
+            string currentVersion = Program.State.VersionData.Version;
+            //string currentChannel = Program.State.Channel;
+
+            //versionstate.Text = $"version is {currentVersion.Replace(".", "")} of channel {channel}";
+
+            if (Int64.Parse(currentVersion.Replace(".", "")) < Int64.Parse(latest.Replace(".", "")))
+            {
+                versionstate.Text = $"Roblox is not up-to-date!";
+                versionstate.ForeColor = Color.Red;
+            }
+            else
+            if
+                (Int64.Parse(currentVersion.Replace(".", "")) == Int64.Parse(latest.Replace(".", "")))
+            {
+                versionstate.Text = $"Roblox is up-to-date!";
+                versionstate.ForeColor = Color.Green;
+            }
+            else
+            if
+                (Int64.Parse(currentVersion.Replace(".", "")) > Int64.Parse(latest.Replace(".", "")))
+            {
+                versionstate.Text = $"Older version selected!";
+                versionstate.ForeColor = Color.Red;
+            }
+            else
+            {
+                versionstate.Text = $"Roblox is up-to-date!";
+                versionstate.ForeColor = Color.Green;
+            }
 
             // Clear the current list of target items.
             targetVersion.Items.Clear();

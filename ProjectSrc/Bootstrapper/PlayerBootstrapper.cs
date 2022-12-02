@@ -349,7 +349,7 @@ namespace RobloxPlayerModManager
         {
             if (versionRegistry == null)
                 versionRegistry = Program.State.VersionData;
-
+            
             var logData = await PlayerDeployLogs
                 .Get(channel)
                 .ConfigureAwait(false);
