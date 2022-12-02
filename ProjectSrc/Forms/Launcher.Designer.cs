@@ -41,6 +41,7 @@
             this.logo = new System.Windows.Forms.PictureBox();
             this.label1 = new System.Windows.Forms.Label();
             this.LaunchBetaApp = new System.Windows.Forms.CheckBox();
+            this.versionstate = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.logo)).BeginInit();
             this.SuspendLayout();
             // 
@@ -203,9 +204,9 @@
             this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label1.Location = new System.Drawing.Point(8, 249);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(82, 13);
+            this.label1.Size = new System.Drawing.Size(71, 13);
             this.label1.TabIndex = 24;
-            this.label1.Text = "Version 0.2.1";
+            this.label1.Text = "Version 0.3";
             this.label1.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
             // 
             // LaunchBetaApp
@@ -221,12 +222,25 @@
             this.LaunchBetaApp.Text = "Launch In Beta App";
             this.LaunchBetaApp.UseVisualStyleBackColor = true;
             // 
+            // versionstate
+            // 
+            this.versionstate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.versionstate.AutoSize = true;
+            this.versionstate.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.versionstate.Location = new System.Drawing.Point(8, 121);
+            this.versionstate.Name = "versionstate";
+            this.versionstate.Size = new System.Drawing.Size(79, 13);
+            this.versionstate.TabIndex = 26;
+            this.versionstate.Text = "VersionState";
+            this.versionstate.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Control;
             this.ClientSize = new System.Drawing.Size(335, 271);
+            this.Controls.Add(this.versionstate);
             this.Controls.Add(this.LaunchBetaApp);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.logo);
@@ -269,6 +283,7 @@
         private System.Windows.Forms.PictureBox logo;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.CheckBox LaunchBetaApp;
+        private System.Windows.Forms.Label versionstate;
     }
 }
 
