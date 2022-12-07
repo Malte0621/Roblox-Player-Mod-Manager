@@ -453,21 +453,21 @@ namespace RobloxPlayerModManager
 
             //versionstate.Text = $"version is {currentVersion.Replace(".", "")} of channel {channel}";
 
-            if (Int64.Parse(currentVersion.Replace(".", "")) < Int64.Parse(latest.Replace(".", "")))
+            if (Int64.Parse(currentVersion.Replace(".", "")) < Int64.Parse(latest.Replace(".", "")) && currentVersion != null)
             {
                 versionstate.Text = $"Roblox is not up-to-date!";
                 versionstate.ForeColor = Color.Red;
             }
             else
             if
-                (Int64.Parse(currentVersion.Replace(".", "")) == Int64.Parse(latest.Replace(".", "")))
+                (Int64.Parse(currentVersion.Replace(".", "")) == Int64.Parse(latest.Replace(".", "")) && currentVersion != null)
             {
                 versionstate.Text = $"Roblox is up-to-date!";
                 versionstate.ForeColor = Color.Green;
             }
             else
             if
-                (Int64.Parse(currentVersion.Replace(".", "")) > Int64.Parse(latest.Replace(".", "")))
+                (Int64.Parse(currentVersion.Replace(".", "")) > Int64.Parse(latest.Replace(".", "")) && currentVersion != null)
             {
                 versionstate.Text = $"Older version selected!";
                 versionstate.ForeColor = Color.Red;
