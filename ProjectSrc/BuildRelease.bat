@@ -1,0 +1,1 @@
+MSBuild.exe -t:Rebuild -p:Configuration=Release

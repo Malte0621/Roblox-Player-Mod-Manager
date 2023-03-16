@@ -49,19 +49,6 @@ namespace RobloxPlayerModManager
             RegistryKey robloxPlaceCmd = robloxPlace.GetSubKey("shell", "open", "command");
             robloxPlaceCmd.SetValue(_, $"\"{modManagerPath}\" -task EditFile -localPlaceFile \"%1\"");
 
-            // Pass the .rbxl and .rbxlx file formats to Roblox.Place
-            RegistryKey[] robloxLevelPass =
-            {
-                classes.GetSubKey(".rbxl"),
-                classes.GetSubKey(".rbxlx")
-            };
-
-            foreach (RegistryKey rbxLevel in robloxLevelPass)
-            {
-                rbxLevel.SetValue(_, "Roblox.Place");
-                rbxLevel.GetSubKey("Roblox.Place", "ShellNew");
-            }
-
             // Setup the URI protocol for opening the mod manager through the website.
             RegistryKey robloxPlayerUrl = GetSubKey(classes, "roblox-Player");
             robloxPlayerUrl.SetValue(_, "URL: Roblox Protocol");
