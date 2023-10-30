@@ -208,7 +208,7 @@
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(82, 13);
             this.label1.TabIndex = 24;
-            this.label1.Text = "Version 0.3.1";
+            this.label1.Text = "Version 0.4.0";
             this.label1.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
             // 
             // LaunchBetaApp
