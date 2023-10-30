@@ -460,7 +460,6 @@
     <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Events\*.cs" />
     <Compile Include="Forms\FlagCreator.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -472,6 +471,12 @@
     </Compile>
     <Compile Include="Forms\FlagEditor.Designer.cs">
       <DependentUpon>FlagEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\Extra.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Extra.Designer.cs">
+      <DependentUpon>Extra.cs</DependentUpon>
     </Compile>
     <Compile Include="Utility\AppState.cs" />
     <Compile Include="Utility\KnownRoot.cs" />
@@ -499,6 +504,12 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="Forms\BootstrapperForm.resx">
+      <DependentUpon>BootstrapperForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\Extra.resx">
+      <DependentUpon>Extra.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FlagEditor.resx">
       <DependentUpon>FlagEditor.cs</DependentUpon>
     </EmbeddedResource>
@@ -559,6 +570,9 @@
     <Analyzer Include="packages\Microsoft.NetCore.Analyzers.3.3.2\analyzers\dotnet\cs\Microsoft.NetCore.CSharp.Analyzers.dll" />
     <Analyzer Include="packages\Microsoft.NetFramework.Analyzers.3.3.2\analyzers\dotnet\cs\Microsoft.NetFramework.Analyzers.dll" />
     <Analyzer Include="packages\Microsoft.NetFramework.Analyzers.3.3.2\analyzers\dotnet\cs\Microsoft.NetFramework.CSharp.Analyzers.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Events\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

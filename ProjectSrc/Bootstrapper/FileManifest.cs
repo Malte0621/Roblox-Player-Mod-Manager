@@ -52,6 +52,9 @@ namespace RobloxPlayerModManager
                     if (path.EndsWith(".ttf") && !path.Contains("\\"))
                         path = "PlayerFonts\\" + path;
 
+                    if (remapExtraContent && ContainsKey(path))
+                        continue;
+
                     Add(path, signature);
                 }
             }

@@ -2,15 +2,19 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Media;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Policy;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 using RestSharp;
 using RobloxDeployHistory;
+using RobloxPlayerModManager.Forms;
 
 namespace RobloxPlayerModManager
 {
@@ -19,6 +23,17 @@ namespace RobloxPlayerModManager
         public string Version { get; private set; }
         private static VersionManifest versionRegistry => Program.State.VersionData;
         private readonly string[] args = null;
+
+        public Dictionary<string, string> argMap = new Dictionary<string, string>();
+
+        public string gameinfo;
+        public string launchtime;
+        public string placelauncherurl;
+        public string placeId;
+        public string browsertrackerid;
+        public string robloxLocale;
+        public string gameLocale;
+        public string rchannel;
 
         public Launcher(params string[] mainArgs)
         {
@@ -250,7 +265,28 @@ namespace RobloxPlayerModManager
             }
         }
 
-        private async void launchPlayer_Click(object sender = null, EventArgs e = null)
+        private static string GetQueryParameterValue(Uri uri, string paramName)
+        {
+            string query = uri.Query;
+            if (query.StartsWith("?"))
+            {
+                query = query.Substring(1);
+            }
+
+            string[] parameters = query.Split('&');
+            foreach (string parameter in parameters)
+            {
+                string[] parts = parameter.Split('=');
+                if (parts.Length == 2 && parts[0] == paramName)
+                {
+                    return parts[1];
+                }
+            }
+
+            return null;
+        }
+
+    private async void launchPlayer_Click(object sender = null, EventArgs e = null)
         {
             var channel = getSelectedChannel();
 
@@ -284,7 +320,7 @@ namespace RobloxPlayerModManager
                     var filePath = file;
                     var delete = false;
 
-                    if (info.Length == 0 && info.Name.StartsWith("DELETE"))
+                    if (info.Length == 0 && info.Name.StartsWith("DELETE",System.StringComparison.CurrentCulture))
                     {
                         var dir = info.DirectoryName;
 
@@ -362,9 +398,7 @@ namespace RobloxPlayerModManager
 
                 if (firstArg != null && firstArg.StartsWith("roblox-player", Program.StringFormat))
                 {
-                    // Arguments were passed by URI.
-                    var argMap = new Dictionary<string, string>();
-
+                    // Arguments were passed by URI
                     foreach (string commandPair in firstArg.Split('+'))
                     {
                         if (commandPair.Contains(':'))
@@ -393,13 +427,17 @@ namespace RobloxPlayerModManager
 
                         if (launchMode == "play")
                         {
-                            string gameinfo = argMap["gameinfo"];
-                            string launchtime = argMap["launchtime"];
-                            string placelauncherurl = argMap["placelauncherurl"].Replace("%3A", ":").Replace("%2F", "/").Replace("%3F", "?").Replace("%3D", "=").Replace("%26", "&");
-                            string browsertrackerid = argMap["browsertrackerid"];
-                            string robloxLocale = argMap["robloxLocale"];
-                            string gameLocale = argMap["gameLocale"];
-                            string rchannel = argMap["channel"];
+                            
+
+                            gameinfo = argMap["gameinfo"];
+                            launchtime = argMap["launchtime"];
+                            placelauncherurl = argMap["placelauncherurl"].Replace("%3A", ":").Replace("%2F", "/").Replace("%3F", "?").Replace("%3D", "=").Replace("%26", "&");
+                            Uri uri = new Uri(placelauncherurl);
+                            placeId = GetQueryParameterValue(uri, "placeId");
+                            browsertrackerid = argMap["browsertrackerid"];
+                            robloxLocale = argMap["robloxLocale"];
+                            gameLocale = argMap["gameLocale"];
+                            rchannel = argMap["channel"];
                             robloxPlayerInfo.Arguments += " --app -t " + gameinfo + " -j " + placelauncherurl + " -b " + browsertrackerid + " --launchtime " + launchtime + " --rloc " + robloxLocale + " --gloc " + gameLocale + " -channel " + rchannel;
                         }
                     }
@@ -452,30 +490,33 @@ namespace RobloxPlayerModManager
             //string currentChannel = Program.State.Channel;
 
             //versionstate.Text = $"version is {currentVersion.Replace(".", "")} of channel {channel}";
+            // Define a culture-specific format provider, e.g., using the "en-US" culture.
+            System.Globalization.CultureInfo culture = new System.Globalization.CultureInfo("en-US");
 
-            if (Int64.Parse(currentVersion.Replace(".", "")) < Int64.Parse(latest.Replace(".", "")) && currentVersion != null)
+            if (Int64.TryParse(currentVersion.Replace(".", ""), NumberStyles.Any, culture, out long currentVersionValue) &&
+                Int64.TryParse(latest.Replace(".", ""), NumberStyles.Any, culture, out long latestValue) && currentVersion != null)
             {
-                versionstate.Text = $"Roblox is not up-to-date!";
+                if (currentVersionValue < latestValue)
+                {
+                    versionstate.Text = "Roblox is not up-to-date!";
+                    versionstate.ForeColor = Color.Red;
+                }
+                else if (currentVersionValue == latestValue)
+                {
+                    versionstate.Text = "Roblox is up-to-date!";
+                    versionstate.ForeColor = Color.Green;
+                }
+                else
+                {
+                    versionstate.Text = "Older version selected!";
+                    versionstate.ForeColor = Color.Red;
+                }
+            }
+            else
+            {
+                // Handle the case where parsing fails, e.g., currentVersion is not a valid number.
+                versionstate.Text = "Invalid version format!";
                 versionstate.ForeColor = Color.Red;
-            }
-            else
-            if
-                (Int64.Parse(currentVersion.Replace(".", "")) == Int64.Parse(latest.Replace(".", "")) && currentVersion != null)
-            {
-                versionstate.Text = $"Roblox is up-to-date!";
-                versionstate.ForeColor = Color.Green;
-            }
-            else
-            if
-                (Int64.Parse(currentVersion.Replace(".", "")) > Int64.Parse(latest.Replace(".", "")) && currentVersion != null)
-            {
-                versionstate.Text = $"Older version selected!";
-                versionstate.ForeColor = Color.Red;
-            }
-            else
-            {
-                versionstate.Text = $"Roblox is up-to-date!";
-                versionstate.ForeColor = Color.Green;
             }
 
             // Clear the current list of target items.
@@ -495,7 +536,7 @@ namespace RobloxPlayerModManager
             HashSet<DeployLog> targets;
 
             if (Environment.Is64BitOperatingSystem)
-                targets = deployLogs.CurrentLogs_x64;
+                targets = deployLogs.CurrentLogs_x86;
             else
                 targets = deployLogs.CurrentLogs_x86;
 
@@ -614,6 +655,16 @@ namespace RobloxPlayerModManager
 
             selectChannel(channelSelect.Text);
             e.SuppressKeyPress = true;
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            using (var extra = new Extra())
+            {
+                Hide();
+                extra.ShowDialog();
+                Show();
+            }
         }
     }
 }

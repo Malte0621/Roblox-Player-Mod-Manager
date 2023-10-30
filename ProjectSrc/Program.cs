@@ -3,11 +3,10 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Windows.Forms;
-
-using Microsoft.Win32;
-
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+
+using Microsoft.Win32;
 
 namespace RobloxPlayerModManager
 {
@@ -16,8 +15,9 @@ namespace RobloxPlayerModManager
         public static readonly RegistryKey LegacyRegistry = Registry.CurrentUser.GetSubKey("SOFTWARE", "Roblox Player Mod Manager");
         public static readonly CultureInfo Format = CultureInfo.InvariantCulture;
 
-        public const StringComparison StringFormat = StringComparison.InvariantCulture;
+        public const StringComparison StringFormat = StringComparison.Ordinal;
         public static readonly NumberFormatInfo NumberFormat = NumberFormatInfo.InvariantInfo;
+        public static string[] appArguments;
 
         public static string RootDir { get; private set; }
         public static ModManagerState State { get; private set; }
@@ -32,6 +32,8 @@ namespace RobloxPlayerModManager
         // 1: The File Protocol to open .rbxl/.rbxlx files through the mod manager.
         // 2: The URI Protcol to open places from the website through the mod manager.
 
+        // UNUSED
+
         public static void UpdatePlayerRegistryProtocols()
         {
             const string _ = ""; // Default empty key/value.
@@ -43,14 +45,14 @@ namespace RobloxPlayerModManager
             // Register the base "Roblox.Place" open protocol.
             RegistryKey classes = Registry.CurrentUser.GetSubKey("SOFTWARE", "Classes");
 
-            RegistryKey robloxPlace = classes.GetSubKey("Roblox.Place");
-            robloxPlace.SetValue(_, "Roblox Place");
+            //RegistryKey robloxPlace = classes.GetSubKey("Roblox.Place");
+            //robloxPlace.SetValue(_, "Roblox Place");
 
-            RegistryKey robloxPlaceCmd = robloxPlace.GetSubKey("shell", "open", "command");
-            robloxPlaceCmd.SetValue(_, $"\"{modManagerPath}\" -task EditFile -localPlaceFile \"%1\"");
+            //RegistryKey robloxPlaceCmd = robloxPlace.GetSubKey("shell", "open", "command");
+            //robloxPlaceCmd.SetValue(_, $"\"{modManagerPath}\" -task EditFile -localPlaceFile \"%1\"");
 
             // Setup the URI protocol for opening the mod manager through the website.
-            RegistryKey robloxPlayerUrl = GetSubKey(classes, "roblox-Player");
+            RegistryKey robloxPlayerUrl = GetSubKey(classes, "roblox-player");
             robloxPlayerUrl.SetValue(_, "URL: Roblox Protocol");
             robloxPlayerUrl.SetValue("URL Protocol", _);
 
@@ -60,7 +62,7 @@ namespace RobloxPlayerModManager
             // Set the default icon for both protocols.
             RegistryKey[] appReg =
             {
-                robloxPlace,
+                //robloxPlace,
                 robloxPlayerUrl
             };
 
@@ -68,7 +70,7 @@ namespace RobloxPlayerModManager
             {
                 RegistryKey defaultIcon = GetSubKey(app, "DefaultIcon");
                 defaultIcon.SetValue(_, $"{modManagerPath},0");
-            }
+           }
         }
 
         static void ConvertLegacy(RegistryKey regKey, JObject node)
@@ -115,6 +117,7 @@ namespace RobloxPlayerModManager
                 Directory.CreateDirectory(RootDir);
 
             var stateFile = Path.Combine(RootDir, "state.json");
+            appArguments = args;
             string json = "";
 
             if (File.Exists(stateFile))

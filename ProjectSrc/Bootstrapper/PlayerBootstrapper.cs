@@ -16,6 +16,8 @@ using Konscious.Security.Cryptography;
 
 namespace RobloxPlayerModManager
 {
+    public delegate void MessageFeed(string message);
+
     public class PlayerBootstrapper
     {
         [DllImport("user32.dll")]
@@ -34,11 +36,8 @@ namespace RobloxPlayerModManager
         private const string UserAgent = "RobloxPlayerModManager";
         public const string StartEvent = "RobloxPlayerModManagerStart";
 
-        public event MessageEventHandler EchoFeed;
-        public event MessageEventHandler StatusChanged;
-
-        public event ChangeEventHandler<int> ProgressChanged;
-        public event ChangeEventHandler<ProgressBarStyle> ProgressBarStyleChanged;
+        public event MessageFeed EchoFeed;
+        public event MessageFeed StatusFeed;
 
         private readonly IBootstrapperState mainState;
         private readonly VersionManifest versionRegistry;
@@ -52,64 +51,13 @@ namespace RobloxPlayerModManager
         private string buildVersion;
         private string status;
 
-        private int _progress = -1;
-        private int _maxProgress = -1;
-        private ProgressBarStyle _progressBarStyle;
-        private readonly object ProgressLock = new object();
-
         public static readonly List<string> BadManifests = new List<string>();
         public static readonly Dictionary<string, string> KnownRoots = new Dictionary<string, string>();
 
-        public int Progress
-        {
-            get => _progress;
-
-            private set
-            {
-                if (_progress == value)
-                    return;
-
-                var change = new ChangeEventArgs<int>(value, "Progress");
-                ProgressChanged?.Invoke(this, change);
-
-                _progress = value;
-            }
-        }
-
-        public int MaxProgress
-        {
-            get => _maxProgress;
-
-            private set
-            {
-                if (_maxProgress == value)
-                    return;
-
-                if (value < Progress)
-                    return;
-
-                var change = new ChangeEventArgs<int>(value, "MaxProgress");
-                ProgressChanged?.Invoke(this, change);
-
-                _maxProgress = value;
-            }
-        }
-
-        public ProgressBarStyle ProgressBarStyle
-        {
-            get => _progressBarStyle;
-
-            private set
-            {
-                if (_progressBarStyle == value)
-                    return;
-
-                var change = new ChangeEventArgs<ProgressBarStyle>(value);
-                ProgressBarStyleChanged?.Invoke(this, change);
-
-                _progressBarStyle = value;
-            }
-        }
+        public int Progress = 0;
+        public int MaxProgress = 0;
+        public ProgressBarStyle ProgressBarStyle = ProgressBarStyle.Continuous;
+        public object ProgressLock = new object();
 
         public Channel Channel { get; set; } = "LIVE";
         public string OverridePlayerDirectory { get; set; } = "";
@@ -149,16 +97,14 @@ namespace RobloxPlayerModManager
 
         private void echo(string message)
         {
-            var args = new MessageEventArgs(message);
-            EchoFeed(this, args);
+            EchoFeed.Invoke(message);
         }
 
         private void setStatus(string newStatus)
         {
             if (status != newStatus)
             {
-                var args = new MessageEventArgs(newStatus);
-                StatusChanged(this, args);
+                StatusFeed?.Invoke(newStatus);
                 status = newStatus;
             }
         }
@@ -349,7 +295,7 @@ namespace RobloxPlayerModManager
         {
             if (versionRegistry == null)
                 versionRegistry = Program.State.VersionData;
-            
+
             var logData = await PlayerDeployLogs
                 .Get(channel)
                 .ConfigureAwait(false);
@@ -357,7 +303,7 @@ namespace RobloxPlayerModManager
             HashSet<DeployLog> targets;
 
             if (Environment.Is64BitOperatingSystem)
-                targets = logData.CurrentLogs_x64;
+                targets = logData.CurrentLogs_x86;
             else
                 targets = logData.CurrentLogs_x86;
 
@@ -481,22 +427,17 @@ namespace RobloxPlayerModManager
 
                 localHttp.DownloadProgressChanged += new DownloadProgressChangedEventHandler((sender, e) =>
                 {
-                    lock (ProgressLock)
+                    if (!setMaxProgress)
                     {
-                        if (!setMaxProgress)
-                        {
-                            MaxProgress += (int)e.TotalBytesToReceive;
-                            setMaxProgress = true;
-                        }
-
-                        int progress = (int)e.BytesReceived;
-
-                        if (progress > lastProgress)
-                        {
-                            int diff = progress - lastProgress;
-                            lastProgress = progress;
-                            Progress += diff;
-                        }
+                        MaxProgress += (int)e.TotalBytesToReceive;
+                        setMaxProgress = true;
+                    }
+                    int progress = (int)e.BytesReceived;
+                    if (progress > lastProgress)
+                    {
+                        int diff = progress - lastProgress;
+                        lastProgress = progress;
+                        Progress += diff;
                     }
                 });
 
@@ -532,141 +473,154 @@ namespace RobloxPlayerModManager
             string downloads = getDirectory(PlayerDir, "downloads");
             string zipExtractPath = Path.Combine(downloads, pkgName);
 
+            echo($"Writing {zipExtractPath}...");
             File.WriteAllBytes(zipExtractPath, data);
 
-                using (var archive = ZipFile.OpenRead(zipExtractPath))
+            using (var archive = ZipFile.OpenRead(zipExtractPath))
+            {
+                var deferred = new Dictionary<ZipArchiveEntry, string>();
+
+                lock (ProgressLock)
+                    MaxProgress += archive.Entries.Count;
+
+                int numFiles = archive.Entries
+                    .Select(entry => entry.FullName)
+                    .Where(name => !name.EndsWith("/", Program.StringFormat))
+                    .Count();
+
+                string localRootDir = null;
+
+                if (KnownRoots.ContainsKey(pkgName))
+                    localRootDir = KnownRoots[pkgName];
+
+                foreach (ZipArchiveEntry entry in archive.Entries)
                 {
-                    var deferred = new Dictionary<ZipArchiveEntry, string>();
+                    bool skip = false;
+                    Progress++;
 
-                    int numFiles = archive.Entries
-                        .Select(entry => entry.FullName)
-                        .Where(name => !name.EndsWith("/", Program.StringFormat))
-                        .Count();
+                    if (entry.Length == 0)
+                        skip = true;
 
-                    string localRootDir = null;
+                    if (entry.Name.EndsWith(".robloxrc", Program.StringFormat))
+                        skip = true;
 
-                    if (KnownRoots.ContainsKey(pkgName))
-                        localRootDir = KnownRoots[pkgName];
+                    if (entry.Name.EndsWith(".luarc", Program.StringFormat))
+                        skip = true;
 
-                    foreach (ZipArchiveEntry entry in archive.Entries)
+                    if (skip)
+                        continue;
+
+                    string newFileSig = null;
+                    string entryPath = entry.FullName.Replace('/', '\\');
+
+                    // If we have figured out what our root directory is, try to resolve
+                    // what the signature of this file is.
+
+                    if (localRootDir != null)
                     {
-                        bool skip = false;
+                        // Append local directory to our path.
+                        var manifestKey = localRootDir + entryPath;
+                        bool hasEntryPath = fileManifest.ContainsKey(manifestKey);
 
-                        if (entry.Length == 0)
-                            skip = true;
-
-                        if (entry.Name.EndsWith(".robloxrc", Program.StringFormat))
-                            skip = true;
-
-                        if (entry.Name.EndsWith(".luarc", Program.StringFormat))
-                            skip = true;
-
-                        if (skip)
-                            continue;
-
-                        string newFileSig = null;
-                        string entryPath = entry.FullName.Replace('/', '\\');
-
-                        // If we have figured out what our root directory is, try to resolve
-                        // what the signature of this file is.
-
-                        if (localRootDir != null)
+                        if (!hasEntryPath)
                         {
-                            // Append local directory to our path.
-                            var manifestKey = localRootDir + entryPath;
-                            bool hasEntryPath = fileManifest.ContainsKey(manifestKey);
+                            // If we can't find this file in the signature lookup table,
+                            // try falling back to the entryPath.
 
-                            if (!hasEntryPath)
-                            {
-                                // If we can't find this file in the signature lookup table,
-                                // try falling back to the entryPath.
+                            manifestKey = entryPath;
+                            hasEntryPath = fileManifest.ContainsKey(manifestKey);
+                        }
 
-                                manifestKey = entryPath;
-                                hasEntryPath = fileManifest.ContainsKey(manifestKey);
-                            }
+                        // If we can find this file path in the file manifest, then we will
+                        // use its pre-computed signature to check if the file has changed.
 
-                            // If we can find this file path in the file manifest, then we will
-                            // use its pre-computed signature to check if the file has changed.
-
-                            newFileSig = hasEntryPath ? fileManifest[manifestKey] : null;
+                        newFileSig = hasEntryPath ? fileManifest[manifestKey] : null;
+                    }
+                    else
+                    {
+                        if (fileManifest.ContainsKey(entryPath))
+                        {
+                            // rooted?
+                            newFileSig = fileManifest[entryPath];
                         }
                         else
                         {
-                            var query = fileManifest.Where(pair => pair.Key.EndsWith(entryPath, Program.StringFormat));
+                            var query = fileManifest.SkipWhile(pair => !pair.Key.EndsWith(entryPath, Program.StringFormat)).Take(1);
                             newFileSig = query.Any() ? query.First().Value : null;
                         }
+                    }
 
-                        // If we couldn't pre-determine the file signature from the manifest,
-                        // then we have to compute it manually. This is slower.
+                    // If we couldn't pre-determine the file signature from the manifest,
+                    // then we have to compute it manually. This is slower.
 
-                        if (newFileSig == null)
-                            newFileSig = computeSignature(entry);
+                    if (newFileSig == null)
+                        newFileSig = computeSignature(entry);
 
-                        // Now check what files this signature corresponds with.
+                    // Now check what files this signature corresponds with.
 
-                        if (bySignature.TryGetValue(newFileSig, out var files))
+                    if (bySignature.TryGetValue(newFileSig, out var files))
+                    {
+                        foreach (string file in files)
                         {
-                            foreach (string file in files)
+                            // Write the file from this signature.
+                            WritePackageFile(PlayerDir, pkgName, file, newFileSig, entry);
+
+                            if (localRootDir == null)
                             {
-                                // Write the file from this signature.
-                                WritePackageFile(PlayerDir, pkgName, file, newFileSig, entry);
+                                string filePath = fixFilePath(pkgName, file);
 
-                                if (localRootDir == null)
+                                if (filePath != file)
+                                    appendNewManifestEntry(filePath, newFileSig);
+
+                                if (filePath.EndsWith(entryPath, Program.StringFormat))
                                 {
-                                    string filePath = fixFilePath(pkgName, file);
-
-                                    if (filePath != file)
-                                        appendNewManifestEntry(filePath, newFileSig);
-
-                                    if (filePath.EndsWith(entryPath, Program.StringFormat))
-                                    {
-                                        // We can infer what the root extraction  
-                                        // directory is for the files in this package!                                 
-                                        localRootDir = filePath.Replace(entryPath, "");
-                                    }
+                                    // We can infer what the root extraction  
+                                    // directory is for the files in this package!                                 
+                                    localRootDir = filePath.Replace(entryPath, "");
                                 }
                             }
                         }
-                        else
-                        {
-                            string file = entry.FullName;
-
-                            if (string.IsNullOrEmpty(localRootDir))
-                            {
-                                // Check back on this file after we extract the regular files,
-                                // so we can make sure this is extracted to the correct directory.
-                                deferred.Add(entry, newFileSig);
-                            }
-                            else
-                            {
-                                // Append the local root directory.
-                                file = localRootDir + file;
-                                WritePackageFile(PlayerDir, pkgName, file, newFileSig, entry);
-                            }
-                        }
                     }
-
-                    // Process any files that we deferred from writing immediately.
-                    foreach (ZipArchiveEntry entry in deferred.Keys)
+                    else
                     {
                         string file = entry.FullName;
-                        string newFileSig = deferred[entry];
 
-                        if (localRootDir != null)
+                        if (string.IsNullOrEmpty(localRootDir))
+                        {
+                            // Check back on this file after we extract the regular files,
+                            // so we can make sure this is extracted to the correct directory.
+                            deferred.Add(entry, newFileSig);
+                        }
+                        else
+                        {
+                            // Append the local root directory.
                             file = localRootDir + file;
-
-                        if (!fileManifest.ContainsKey(file))
-                            appendNewManifestEntry(file, newFileSig);
-
-                        WritePackageFile(PlayerDir, pkgName, file, newFileSig, entry);
+                            WritePackageFile(PlayerDir, pkgName, file, newFileSig, entry);
+                        }
                     }
-
-                    // Update the signature in the package registry so we can check
-                    // if this zip file needs to be updated in future versions.
-
-                    pkgInfo.Signature = package.Signature;
-                    pkgInfo.NumFiles = numFiles;
                 }
+
+                // Process any files that we deferred from writing immediately.
+                foreach (ZipArchiveEntry entry in deferred.Keys)
+                {
+                    string file = entry.FullName;
+                    string newFileSig = deferred[entry];
+
+                    if (localRootDir != null)
+                        file = localRootDir + file;
+
+                    if (!fileManifest.ContainsKey(file))
+                        appendNewManifestEntry(file, newFileSig);
+
+                    WritePackageFile(PlayerDir, pkgName, file, newFileSig, entry);
+                }
+
+                // Update the signature in the package registry so we can check
+                // if this zip file needs to be updated in future versions.
+
+                pkgInfo.Signature = package.Signature;
+                pkgInfo.NumFiles = numFiles;
+            }
         }
 
         private void WritePackageFile(string PlayerDir, string pkgName, string file, string newFileSig, ZipArchiveEntry entry)
@@ -848,6 +802,7 @@ namespace RobloxPlayerModManager
 
                     KnownRoots.Clear();
                     BadManifests.Clear();
+                    setStatus($"Fetching Known Roots...");
 
                     using (var http = new WebClient())
                     {
@@ -878,7 +833,7 @@ namespace RobloxPlayerModManager
                         }
                     }
 
-                    setStatus($"Installing Version {versionId} of Roblox Player...");
+                    setStatus($"Installing Packages...");
                     echo("Grabbing package manifest...");
 
                     var pkgManifest = await PackageManifest
@@ -905,6 +860,7 @@ namespace RobloxPlayerModManager
                     MaxProgress = 0;
                     ProgressBarStyle = ProgressBarStyle.Continuous;
 
+                    // Verify all of these packages are available to install.
                     foreach (Package package in pkgManifest)
                     {
                         package.ShouldInstall = shouldFetchPackage(package);
@@ -930,6 +886,7 @@ namespace RobloxPlayerModManager
 
                     taskQueue.Clear();
 
+                    // Install packages, abort if any of them don't exist.
                     foreach (Package package in pkgManifest)
                     {
                         if (!package.Exists)
@@ -954,8 +911,6 @@ namespace RobloxPlayerModManager
                         {
                             var install = installPackage(package);
                             package.Data = await install.ConfigureAwait(false);
-
-                            extractPackage(package);
                             return true;
                         });
 
@@ -966,6 +921,7 @@ namespace RobloxPlayerModManager
                         .WhenAll(taskQueue)
                         .ConfigureAwait(true);
 
+                    // Make sure the packages were installed without errors.
                     foreach (var task in taskQueue)
                     {
                         bool passed = true;
@@ -990,15 +946,20 @@ namespace RobloxPlayerModManager
                         }
                     }
 
+                    // Extract all of the packages
+                    setStatus($"Extracting Packages...");
                     taskQueue.Clear();
+
+                    Progress = 0;
+                    MaxProgress = 0;
 
                     foreach (Package package in pkgManifest)
                     {
-                        if (!package.ShouldInstall)
-                            continue;
-
-                        var extract = Task.Run(() => extractPackage(package));
-                        taskQueue.Add(extract);
+                        if (package.ShouldInstall)
+                        {
+                            var extract = Task.Run(() => extractPackage(package));
+                            taskQueue.Add(extract);
+                        }
                     }
 
                     await Task
@@ -1090,10 +1051,14 @@ namespace RobloxPlayerModManager
                 // Feel free to patch in your own thing if you want.
 
 #               if ROBLOX_INTERNAL
-                var rbxInternal = Task.Run(() => RobloxInternal.Patch(this));
-                await rbxInternal.ConfigureAwait(false);
+                    var rbxInternal = Task.Run(() => RobloxInternal.Patch(this));
+                    await rbxInternal.ConfigureAwait(false);
 #               endif
             }
+
+            ProgressBarStyle = ProgressBarStyle.Marquee;
+            MaxProgress = 1;
+            Progress = 1;
 
             setStatus("Starting Roblox Player...");
             echo("Roblox Player is up to date!");
@@ -1121,7 +1086,7 @@ namespace RobloxPlayerModManager
                     start.Dispose();
                 });
             }
-
+            await Task.Delay(1000);
             return true;
         }
     }

@@ -42,6 +42,7 @@
             this.label1 = new System.Windows.Forms.Label();
             this.LaunchBetaApp = new System.Windows.Forms.CheckBox();
             this.versionstate = new System.Windows.Forms.Label();
+            this.button1 = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.logo)).BeginInit();
             this.SuspendLayout();
             // 
@@ -52,7 +53,7 @@
             this.launchPlayer.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.launchPlayer.Cursor = System.Windows.Forms.Cursors.Default;
             this.launchPlayer.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.launchPlayer.Location = new System.Drawing.Point(11, 139);
+            this.launchPlayer.Location = new System.Drawing.Point(11, 130);
             this.launchPlayer.Margin = new System.Windows.Forms.Padding(6, 3, 3, 3);
             this.launchPlayer.Name = "launchPlayer";
             this.launchPlayer.Size = new System.Drawing.Size(142, 23);
@@ -67,7 +68,7 @@
             this.manageMods.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.manageMods.Cursor = System.Windows.Forms.Cursors.Default;
             this.manageMods.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.manageMods.Location = new System.Drawing.Point(11, 168);
+            this.manageMods.Location = new System.Drawing.Point(11, 159);
             this.manageMods.Margin = new System.Windows.Forms.Padding(6, 3, 3, 3);
             this.manageMods.Name = "manageMods";
             this.manageMods.Size = new System.Drawing.Size(142, 23);
@@ -125,7 +126,7 @@
             this.openFlagEditor.AccessibleName = "Open Flag Editor";
             this.openFlagEditor.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.openFlagEditor.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.openFlagEditor.Location = new System.Drawing.Point(11, 197);
+            this.openFlagEditor.Location = new System.Drawing.Point(11, 188);
             this.openFlagEditor.Margin = new System.Windows.Forms.Padding(6, 3, 3, 3);
             this.openFlagEditor.Name = "openFlagEditor";
             this.openFlagEditor.Size = new System.Drawing.Size(142, 23);
@@ -178,6 +179,7 @@
             this.targetVersion.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.targetVersion.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.targetVersion.FormattingEnabled = true;
+            this.targetVersion.ImeMode = System.Windows.Forms.ImeMode.NoControl;
             this.targetVersion.Items.AddRange(new object[] {
             "(Use Latest)"});
             this.targetVersion.Location = new System.Drawing.Point(174, 181);
@@ -227,12 +229,26 @@
             this.versionstate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.versionstate.AutoSize = true;
             this.versionstate.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.versionstate.Location = new System.Drawing.Point(8, 121);
+            this.versionstate.Location = new System.Drawing.Point(8, 114);
             this.versionstate.Name = "versionstate";
             this.versionstate.Size = new System.Drawing.Size(79, 13);
             this.versionstate.TabIndex = 26;
             this.versionstate.Text = "VersionState";
             this.versionstate.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // button1
+            // 
+            this.button1.AccessibleName = "Open Flag Editor";
+            this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.button1.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.button1.Location = new System.Drawing.Point(11, 217);
+            this.button1.Margin = new System.Windows.Forms.Padding(6, 3, 3, 3);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(142, 23);
+            this.button1.TabIndex = 27;
+            this.button1.Text = "Extra Options";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // Launcher
             // 
@@ -240,6 +256,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Control;
             this.ClientSize = new System.Drawing.Size(335, 271);
+            this.Controls.Add(this.button1);
             this.Controls.Add(this.versionstate);
             this.Controls.Add(this.LaunchBetaApp);
             this.Controls.Add(this.label1);
@@ -284,6 +301,7 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.CheckBox LaunchBetaApp;
         private System.Windows.Forms.Label versionstate;
+        private System.Windows.Forms.Button button1;
     }
 }
 
