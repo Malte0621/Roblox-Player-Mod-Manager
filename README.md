@@ -1,7 +1,7 @@
 <hr/>
 
 <p align="center">
-  <img width="256" height="256" src="https://raw.githubusercontent.com/Malte0621/Roblox-Player-Mod-Manager/main/ProjectSrc/Resources/Logo.png"><h1 align=center>Roblox Player Mod Manager<br/>(By: Malte0621)</h1>
+  <img width="256" height="256" src="https://raw.githubusercontent.com/Malte0621/Roblox-Player-Mod-Manager/main/ProjectSrc/Resources/Logo.png"><h1 align=center>Roblox Player Mod Manager<br/>(By: Malte0621)<br/>(Revived By: diamond3500/TheMaster3314)</h1>
   
 </p>
 
@@ -33,8 +33,8 @@ https://twitter.com/BoatbomberRBLX/status/1347262909915738113
 # Downloads
 
 The latest version can be found on the ***Releases*** page of this repository:<br/>
-https://github.com/Malte0621/Roblox-Player-Mod-Manager/releases
+https://github.com/diamond3500/Roblox-Player-Mod-Manager/releases
 
 You can also download the latest committed versions here:
-* <a href="https://github.com/Malte0621/Roblox-Player-Mod-Manager/raw/main/RobloxPlayerModManager.exe">Download (.exe)</a></h1>
-* <a href="https://github.com/Malte0621/Roblox-Player-Mod-Manager/archive/main.zip">Download (.zip)</a>
+* <a href="https://github.com/diamond3500/Roblox-Player-Mod-Manager/raw/main/RobloxPlayerModManager.exe">Download (.exe)</a></h1>
+* <a href="https://github.com/diamond3500/Roblox-Player-Mod-Manager/archive/main.zip">Download (.zip)</a>

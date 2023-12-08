@@ -4,6 +4,8 @@ using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 
+using RobloxDeployHistory;
+
 namespace RobloxPlayerModManager
 {
     internal class PackageManifest : List<Package>
@@ -64,19 +66,28 @@ namespace RobloxPlayerModManager
                     Add(package);
                 }
             }
-            
+
             RawData = data;
         }
 
-        public static async Task<PackageManifest> Get(string branch, string versionGuid)
+        public static async Task<PackageManifest> Get(ClientVersionInfo info)
         {
-            string pkgManifestUrl = $"https://s3.amazonaws.com/setup.{branch}.com/{versionGuid}-rbxPkgManifest.txt";
+            Channel channel = info.Channel;
+            string versionGuid = info.VersionGuid;
+
+            string pkgManifestUrl = $"{channel.BaseUrl}/{versionGuid}-rbxPkgManifest.txt";
             string pkgManifestData;
 
             using (WebClient http = new WebClient())
             {
                 var getData = http.DownloadStringTaskAsync(pkgManifestUrl);
                 pkgManifestData = await getData.ConfigureAwait(false);
+                int pkgManifestIndex = pkgManifestData.IndexOf("RobloxPlayerLauncher.exe");
+                if (pkgManifestIndex != pkgManifestIndex + 3)
+                {
+                    pkgManifestData = pkgManifestData.Remove(pkgManifestIndex);
+                }
+
             }
 
             return new PackageManifest(pkgManifestData);
