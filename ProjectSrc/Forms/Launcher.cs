@@ -11,6 +11,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Security.Policy;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using Microsoft.Build.Framework;
 using Newtonsoft.Json;
 using RestSharp;
 using RobloxDeployHistory;
@@ -26,6 +27,8 @@ namespace RobloxPlayerModManager
 
         public Dictionary<string, string> argMap = new Dictionary<string, string>();
 
+        public RobloxDeployHistory.ClientVersionInfo VersionInfo;
+
         public string gameinfo;
         public string launchtime;
         public string placelauncherurl;
@@ -34,6 +37,8 @@ namespace RobloxPlayerModManager
         public string robloxLocale;
         public string gameLocale;
         public string rchannel;
+
+
 
         public Launcher(params string[] mainArgs)
         {
@@ -481,7 +486,21 @@ namespace RobloxPlayerModManager
             // Grab the version currently being targetted.
             string targetId = Program.State.TargetVersion;
 
-            var VersionInfo = await ClientVersionInfo.Get(channel, "WindowsPlayer").ConfigureAwait(true);
+            try
+            {
+                VersionInfo = await ClientVersionInfo.Get(channel, "WindowsPlayer").ConfigureAwait(true);
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Error fetching version information\n\nResetting channel to LIVE.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                channelSelect.SelectedIndex = 0;
+                channel = "LIVE";
+                Program.State.Channel = channel;
+                Program.SaveState();
+
+                VersionInfo = await ClientVersionInfo.Get(channel, "WindowsPlayer").ConfigureAwait(true);
+            }
 
             var latest = VersionInfo.Version;
 
@@ -657,7 +676,7 @@ namespace RobloxPlayerModManager
             e.SuppressKeyPress = true;
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void extraButton_Click(object sender, EventArgs e)
         {
             using (var extra = new Extra())
             {

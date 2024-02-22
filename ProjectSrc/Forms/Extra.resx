@@ -117,6 +117,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="label4.Text" xml:space="preserve">
+    <value>Disables Roblox's automatic DPI Scaling so the game renders at hgher resolutions than 1080p.
+While this makes the game look better it can be heavy on performance.
+You need a monitor that renders resolutions higher than 1920x1080 for this option to work
+</value>
+  </data>
+  <data name="label3.Text" xml:space="preserve">
+    <value>Overrides roblox's max FPS. (May be removed in the future due to roblox soon including this option in the game's settings
+Warning: if you set this too high it can cause the physics's framerate to be too high and increase the ping</value>
+  </data>
   <metadata name="serverId.UserAddedColumn" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
     <value>True</value>
   </metadata>

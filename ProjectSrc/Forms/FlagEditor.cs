@@ -11,6 +11,7 @@ using System.Windows.Forms;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using RobloxPlayerModManager.Forms;
 
 namespace RobloxPlayerModManager
 {
@@ -99,11 +100,11 @@ namespace RobloxPlayerModManager
                 DataGridViewRow selectedRow = flagDataGridView.SelectedRows[0];
                 selectedFlag = flags[selectedRow.Index];
             }
-            
+
             return selectedFlag?.Key == getFlagKeyByRow(row);
         }
 
-        private void addFlagOverride(FVariable flag, bool init = false)
+        public void addFlagOverride(FVariable flag, bool init = false)
         {
             string key = flag.Key;
 
@@ -181,8 +182,21 @@ namespace RobloxPlayerModManager
             flagDataGridView.RowCount = flags.Count;
         }
 
-        private async void InitializeEditor()
+        public async void InitializeEditor()
         {
+            LoadingForm loadingForm = new LoadingForm("Loading FFlag Editor...", ProgressBarStyle.Marquee, null);
+
+            loadingForm.Show();
+
+            loadingForm.TopMost = true;
+            loadingForm.Location = new Point(
+                this.Location.X + this.Width / 2 - loadingForm.ClientSize.Width / 2,
+                this.Location.Y + this.Height / 2 - loadingForm.ClientSize.Height / 2);
+        
+            loadingForm.BringToFront();
+
+            Task.Delay(500).Wait();
+
             string localAppData = Environment.GetEnvironmentVariable("LocalAppData");
 
             string settingsDir = Path.Combine(localAppData, "Roblox", "ClientSettings");
@@ -227,7 +241,7 @@ namespace RobloxPlayerModManager
                     info.Refresh();
                 }
 
-                File.WriteAllText(settingsPath, File.ReadAllText(settingsPath).Replace("\"applicationSettings\":{","").Replace("}}", "}"));
+                File.WriteAllText(settingsPath, File.ReadAllText(settingsPath).Replace("\"applicationSettings\":{", "").Replace("}}", "}"));
 
                 /*
                 // Create some system events for player so we can hide the splash screen.
@@ -270,7 +284,7 @@ namespace RobloxPlayerModManager
 
             string settings = File.ReadAllText(settingsPath);
             Dictionary<string, string> json;
-            
+
             using (var reader = new StringReader(settings))
             using (var jsonReader = new JsonTextReader(reader))
             {
@@ -332,6 +346,8 @@ namespace RobloxPlayerModManager
 
             overrideStatus.Visible = true;
             overrideDataGridView.DataSource = overrideView;
+            
+            loadingForm.Close();
         }
 
         private async void FlagEditor_Load(object sender, EventArgs e)
@@ -342,7 +358,7 @@ namespace RobloxPlayerModManager
             TopMost = true;
             BringToFront();
 
-            Refresh();
+            //Refresh();
 
             var init = Task.Run(() =>
             {
@@ -635,7 +651,7 @@ namespace RobloxPlayerModManager
 
                 flagCreator.BringToFront();
                 flagCreator.ShowDialog();
-               
+
                 Enabled = true;
                 UseWaitCursor = false;
 

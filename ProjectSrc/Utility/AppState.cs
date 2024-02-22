@@ -51,5 +51,9 @@ namespace RobloxPlayerModManager
         public Dictionary<string, string> FileManifest { get; set; } = new Dictionary<string, string>();
         public Dictionary<string, FVariable> FlagEditor { get; set; } = new Dictionary<string, FVariable>();
         public Dictionary<string, PackageState> PackageManifest { get; set; } = new Dictionary<string, PackageState>();
+
+        public string extraMaxFPS { get; set; } = "60";
+        public int extraSelectedRendererIndex { get; set; } = 0;
+        public bool extraDPIDisabled { get; set; } = false;
     }
 }

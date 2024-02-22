@@ -478,6 +478,12 @@
     <Compile Include="Forms\Extra.Designer.cs">
       <DependentUpon>Extra.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\LoadingForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\LoadingForm.Designer.cs">
+      <DependentUpon>LoadingForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Utility\AppState.cs" />
     <Compile Include="Utility\KnownRoot.cs" />
     <Compile Include="Utility\CustomFlag.cs" />
@@ -515,6 +521,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\Launcher.resx">
       <DependentUpon>Launcher.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\LoadingForm.resx">
+      <DependentUpon>LoadingForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
